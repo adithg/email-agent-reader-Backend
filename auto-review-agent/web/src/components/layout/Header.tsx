@@ -24,7 +24,7 @@ export function Header({ title }: HeaderProps) {
             <Bell className="w-5 h-5" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-danger rounded-full border-2 border-white"></span>
           </button>
-          
+
           <button className="flex items-center gap-2 p-1 pl-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-border">
             <div className="w-8 h-8 rounded-full bg-accent-blue/10 flex items-center justify-center">
               <User className="w-5 h-5 text-accent-blue" />

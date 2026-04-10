@@ -10,12 +10,11 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Request Volume Over Time */}
         <Card title="Request Volume Over Time" subtitle="Daily submission trends">
           <div className="h-64 flex items-end gap-2 pt-4">
             {[40, 65, 45, 90, 75, 55, 80].map((val, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div 
+                <div
                   className="w-full bg-accent-blue/20 hover:bg-accent-blue/40 transition-colors rounded-t-md relative group"
                   style={{ height: `${val}%` }}
                 >
@@ -23,13 +22,12 @@ export default function AnalyticsPage() {
                     {val}
                   </div>
                 </div>
-                <span className="text-[10px] text-muted uppercase font-bold">Day {i+1}</span>
+                <span className="text-[10px] text-muted uppercase font-bold">Day {i + 1}</span>
               </div>
             ))}
           </div>
         </Card>
 
-        {/* Approval Outcomes */}
         <Card title="Approval Outcomes" subtitle="Distribution of final decisions">
           <div className="flex items-center justify-around h-64">
             <div className="relative w-40 h-40">
@@ -61,7 +59,6 @@ export default function AnalyticsPage() {
           </div>
         </Card>
 
-        {/* Risk Level Distribution */}
         <Card title="Risk Level Distribution" subtitle="AI classification breakdown">
           <div className="space-y-6 pt-4">
             {[
@@ -82,7 +79,6 @@ export default function AnalyticsPage() {
           </div>
         </Card>
 
-        {/* Key Performance Indicators */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <Card className="flex flex-col items-center justify-center text-center p-8">
             <div className="bg-blue-50 p-3 rounded-full mb-4">

@@ -4,6 +4,7 @@ import { ShieldCheck } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { Select } from '../components/ui/Select';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function RegisterPage() {
@@ -12,16 +13,23 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'requester' | 'admin'>('requester');
+  const [adminCode, setAdminCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const roleOptions = [
+    { value: 'requester', label: 'Requester' },
+    { value: 'admin', label: 'Admin' },
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUp(email, password, fullName, role, adminCode);
     if (error) setError(error.message);
-    else navigate('/');
+    else navigate('/', { replace: true });
     setLoading(false);
   };
 
@@ -38,6 +46,22 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input label="Full Name" placeholder="John Smith" required value={fullName} onChange={e => setFullName(e.target.value)} />
             <Input label="Email Address" type="email" placeholder="name@company.com" required value={email} onChange={e => setEmail(e.target.value)} />
+            <Select
+              label="Account Type"
+              options={roleOptions}
+              value={role}
+              onChange={e => setRole(e.target.value as 'requester' | 'admin')}
+            />
+            {role === 'admin' && (
+              <Input
+                label="Organization Admin Code"
+                type="password"
+                placeholder="Enter admin code"
+                required
+                value={adminCode}
+                onChange={e => setAdminCode(e.target.value)}
+              />
+            )}
             <Input label="Password" type="password" placeholder="Min. 6 characters" required value={password} onChange={e => setPassword(e.target.value)} />
             <Button type="submit" className="w-full" size="lg" disabled={loading}>{loading ? 'Creating account...' : 'Create Account'}</Button>
           </form>

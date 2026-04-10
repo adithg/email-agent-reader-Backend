@@ -9,6 +9,7 @@ import RequestDetailPage from '../pages/RequestDetailPage';
 import ActivityLogPage from '../pages/ActivityLogPage';
 import MyRequestsPage from '../pages/MyRequestsPage';
 import AnalyticsPage from '../pages/AnalyticsPage';
+import { AdminRoute, ProtectedRoute, PublicOnlyRoute } from './RouteGuards';
 
 const NotFound = () => (
   <div className="flex flex-col items-center justify-center py-20">
@@ -19,25 +20,34 @@ const NotFound = () => (
 
 const router = createBrowserRouter([
   {
-    path: '/login',
-    element: <LoginPage />,
-  },
-  {
-    path: '/register',
-    element: <RegisterPage />,
-  },
-  {
-    path: '/',
-    element: <AppLayout />,
+    element: <PublicOnlyRoute />,
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'submit', element: <SubmitRequestPage /> },
-      { path: 'queue', element: <ApprovalQueuePage /> },
-      { path: 'request/:id', element: <RequestDetailPage /> },
-      { path: 'my-requests', element: <MyRequestsPage /> },
-      { path: 'activity', element: <ActivityLogPage /> },
-      { path: 'analytics', element: <AnalyticsPage /> },
-      { path: '*', element: <NotFound /> },
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+    ],
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: '/',
+        element: <AppLayout />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: 'submit', element: <SubmitRequestPage /> },
+          {
+            element: <AdminRoute />,
+            children: [
+              { path: 'queue', element: <ApprovalQueuePage /> },
+            ],
+          },
+          { path: 'request/:id', element: <RequestDetailPage /> },
+          { path: 'my-requests', element: <MyRequestsPage /> },
+          { path: 'activity', element: <ActivityLogPage /> },
+          { path: 'analytics', element: <AnalyticsPage /> },
+          { path: '*', element: <NotFound /> },
+        ],
+      },
     ],
   },
 ]);

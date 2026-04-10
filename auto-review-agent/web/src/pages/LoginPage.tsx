@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -8,7 +8,11 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, signInWithGoogle } = useAuth();
+  const location = useLocation();
+  const { signIn } = useAuth();
+  const redirectTo = location.state && typeof location.state === 'object' && 'from' in location.state
+    ? (location.state.from as { pathname?: string })?.pathname || '/'
+    : '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +24,7 @@ export default function LoginPage() {
     setError(null);
     const { error } = await signIn(email, password);
     if (error) setError(error.message);
-    else navigate('/');
+    else navigate(redirectTo, { replace: true });
     setLoading(false);
   };
 
@@ -38,10 +42,6 @@ export default function LoginPage() {
             <Input label="Email Address" type="email" placeholder="name@company.com" required autoFocus value={email} onChange={e => setEmail(e.target.value)} />
             <Input label="Password" type="password" placeholder="••••••••" required value={password} onChange={e => setPassword(e.target.value)} />
             <Button type="submit" className="w-full" size="lg" disabled={loading}>{loading ? 'Signing in...' : 'Sign In'}</Button>
-            <div className="relative py-2"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-muted">Or</span></div></div>
-            <Button type="button" variant="outline" className="w-full flex items-center gap-2" onClick={signInWithGoogle}>
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />Continue with Google
-            </Button>
           </form>
         </Card>
         <p className="text-center mt-8 text-sm text-muted">Don't have an account?{' '}<Link to="/register" className="font-semibold text-accent-blue hover:underline">Create an account</Link></p>

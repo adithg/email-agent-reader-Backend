@@ -7,13 +7,21 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'requester' | 'admin',
+    adminCode?: string
+  ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const ADMIN_SIGNUP_CODE = import.meta.env.VITE_ADMIN_SIGNUP_CODE || 'UTDROOMADMIN';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -21,28 +29,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+  const upsertProfileFromUser = async (authUser: User) => {
+    const requestedRole = authUser.user_metadata?.role === 'admin' ? 'admin' : 'requester';
+    const profilePayload = {
+      id: authUser.id,
+      email: authUser.email ?? '',
+      full_name: authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null,
+      avatar_url: authUser.user_metadata?.avatar_url ?? null,
+      role: requestedRole,
+    };
+
+    const { error } = await supabase.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+    return { error };
+  };
+
+  const fetchProfile = async (userId: string, authUser?: User | null) => {
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    if (data) setProfile(data);
+
+    if (error && authUser) {
+      const { error: upsertError } = await upsertProfileFromUser(authUser);
+      if (upsertError) {
+        setProfile(null);
+        return;
+      }
+
+      const { data: retryData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      setProfile(retryData ?? null);
+      return;
+    }
+
+    setProfile(data ?? null);
   };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchProfile(session.user.id, session.user);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setProfile(null);
+      if (session?.user) {
+        void fetchProfile(session.user.id, session.user);
+      } else {
+        setProfile(null);
+      }
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -53,18 +96,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'requester' | 'admin',
+    adminCode?: string
+  ) => {
+    if (role === 'admin' && adminCode !== ADMIN_SIGNUP_CODE) {
+      return { error: new Error('Invalid admin code.') };
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName, role } },
     });
     if (!error && data.user) {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
+      await upsertProfileFromUser({
+        ...data.user,
         email,
-        full_name: fullName,
-        role: 'requester',
+        user_metadata: {
+          ...data.user.user_metadata,
+          full_name: fullName,
+          role,
+        },
       });
     }
     return { error };
@@ -77,12 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: `${window.location.origin}/` },
     });
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, isAdmin: profile?.role === 'admin', signIn, signUp, signOut, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

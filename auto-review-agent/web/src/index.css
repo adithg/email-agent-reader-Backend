@@ -1,28 +1,45 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-primary-dark: #0F172A;
-  --color-accent-blue: #2563EB;
-  --color-success: #16A34A;
-  --color-warning: #D97706;
-  --color-danger: #DC2626;
-  --color-background: #F8FAFC;
-  --color-card: #FFFFFF;
-  --color-border: #E2E8F0;
-  --color-muted: #64748B;
-  
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
+  --color-primary-ink: #1c252c;
+  --color-accent-coral: #ff7a59;
+  --color-accent-teal: #00a699;
+  --color-accent-gold: #e0a106;
+  --color-success: #1f9d55;
+  --color-warning: #d97706;
+  --color-danger: #d9485f;
+  --color-background: #fcf9f4;
+  --color-card: #fffdf8;
+  --color-border: #ddd2c5;
+  --color-muted: #6c757d;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
 }
 
 @layer base {
+  :root {
+    font-family: "Space Grotesk", sans-serif;
+  }
+
   body {
-    @apply bg-background text-primary-dark antialiased;
+    @apply bg-background text-primary-ink antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.03em;
   }
 }
 
 @layer components {
   .card-shadow {
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    box-shadow: 0 24px 60px rgba(28, 37, 44, 0.08);
+  }
+
+  .hero-serif {
+    font-family: "Instrument Serif", serif;
   }
 }
