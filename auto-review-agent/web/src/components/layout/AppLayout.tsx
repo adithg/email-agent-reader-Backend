@@ -1,10 +1,11 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { motion } from 'motion/react';
 
 const pageTitleMap: Record<string, string> = {
-  '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
   '/submit': 'Submit Request',
   '/queue': 'Approval Queue',
   '/my-requests': 'My Requests',
@@ -15,12 +16,17 @@ const pageTitleMap: Record<string, string> = {
 export function AppLayout() {
   const location = useLocation();
   const title = pageTitleMap[location.pathname] || 'Auto-Review Agent';
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
     <div className="min-h-screen bg-background flex">
       <Sidebar />
       <main className="flex-1 ml-64 flex flex-col">
-        <Header title={title} />
+        <Header
+          title={title}
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+        />
         <div className="p-8">
           <motion.div
             key={location.pathname}
@@ -28,7 +34,7 @@ export function AppLayout() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <Outlet />
+            <Outlet context={{ searchQuery }} />
           </motion.div>
         </div>
       </main>

@@ -12,7 +12,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 
 const navLinks = [
-  { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Submit Request', path: '/submit', icon: PlusCircle },
   { name: 'Approval Queue', path: '/queue', icon: ListTodo, adminOnly: true },
   { name: 'My Requests', path: '/my-requests', icon: History },

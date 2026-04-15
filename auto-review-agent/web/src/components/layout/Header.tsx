@@ -2,9 +2,11 @@ import { Search, Bell, User } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
+  searchQuery: string;
+  onSearchQueryChange: (value: string) => void;
 }
 
-export function Header({ title }: HeaderProps) {
+export function Header({ title, searchQuery, onSearchQueryChange }: HeaderProps) {
   return (
     <header className="h-16 bg-white border-b border-border flex items-center justify-between px-8 sticky top-0 z-20">
       <h2 className="text-xl font-bold text-primary-dark">{title}</h2>
@@ -15,6 +17,8 @@ export function Header({ title }: HeaderProps) {
           <input
             type="text"
             placeholder="Search requests..."
+            value={searchQuery}
+            onChange={(event) => onSearchQueryChange(event.target.value)}
             className="pl-10 pr-4 py-2 bg-slate-50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue w-64"
           />
         </div>
