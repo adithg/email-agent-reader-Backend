@@ -51,7 +51,7 @@ export default function LandingPage() {
     () => [
       { label: 'Flow', id: 'how-it-works' },
       { label: 'Capabilities', id: 'capabilities' },
-      { label: 'Why it lands', id: 'why-it-fits' },
+      { label: 'Why teams choose it', id: 'why-it-fits' },
       { label: 'Start', id: 'cta' },
     ],
     []
@@ -114,16 +114,16 @@ export default function LandingPage() {
 
   const fitPoints = [
     {
-      title: 'Less dry, more dimensional',
-      body: 'The page now feels like a product brand surface instead of a polite static explainer.',
+      title: 'Inbox-first by design',
+      body: 'The product fits teams that already receive approval work by email and need more structure without changing how requests arrive.',
     },
     {
-      title: 'Still grounded in the workflow',
-      body: 'The copy and structure stay tied to what the app actually does: triage, summarize, route, and review.',
+      title: 'Smarter review from the first glance',
+      body: 'Summaries, urgency, and recommendation signals give reviewers the context they need before opening a long thread.',
     },
     {
-      title: 'Glass used with restraint',
-      body: 'The new skill helped conceptually, but the web implementation keeps the blur and layering purposeful instead of turning every block into frosted noise.',
+      title: 'Built for operational clarity',
+      body: 'The interface helps busy teams move through request queues with less manual sorting and more confidence in each decision.',
     },
   ];
 
@@ -195,17 +195,17 @@ export default function LandingPage() {
               >
                 <div className="candy-glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#8d69b3]">
                   <WandSparkles className="h-3.5 w-3.5" />
-                  Cotton-candy liquid glass interface
+                  AI-assisted approval workflow
                 </div>
                 <p className="mt-8 text-sm font-semibold uppercase tracking-[0.28em] text-[#74648f]">Auto-Review Agent</p>
                 <h1 className="mt-4 max-w-4xl text-5xl font-bold leading-[0.94] tracking-[-0.065em] text-[#453857] md:text-7xl lg:text-[5.7rem]">
-                  Make approval email review feel
+                  Make approval email review
                   <span className="block bg-[linear-gradient(135deg,#ebb1ff_0%,#ffc6e9_42%,#8bcbff_100%)] bg-clip-text text-transparent">
-                    lighter, sweeter, and faster.
+                    faster, clearer, and more reliable.
                   </span>
                 </h1>
                 <p className="mt-7 max-w-2xl text-lg leading-8 text-[#685b7c] md:text-xl">
-                  AI summaries, risk signals, and a calmer visual rhythm help reviewers move through requests without the usual queue fatigue.
+                  AI summaries, risk signals, and structured routing help teams move through approval work with less manual sorting and better judgment.
                 </p>
                 <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
                   <Button
@@ -326,8 +326,8 @@ export default function LandingPage() {
                 <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
                   <SectionHeading
                     eyebrow="Capabilities"
-                    title="The product story is still operational, but the mood is no longer dry"
-                    subtitle="This redesign keeps the existing React structure and turns the landing page into a softer, more premium SaaS entry point with better contrast and spacing." 
+                    title="Built to reduce review time without sacrificing control"
+                    subtitle="Auto-Review Agent gives teams faster intake, stronger context, and clearer next steps across every request." 
                   />
                   <div className="grid gap-4 sm:grid-cols-2">
                     {capabilityCards.map((feature) => {
@@ -354,9 +354,9 @@ export default function LandingPage() {
                 <div className="candy-glass rounded-[38px] px-6 py-7 md:px-10 md:py-10">
                   <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
                     <SectionHeading
-                      eyebrow="Why it lands"
-                      title="A better fit for this app than the previous warmer glass treatment"
-                      subtitle="Your new skill is useful when translated into web terms: grouped material, controlled blur, and fewer but stronger interactive surfaces."
+                      eyebrow="Why teams choose it"
+                      title="Designed for organizations that still run approvals through email"
+                      subtitle="Auto-Review Agent keeps the inbox front door intact while giving teams a faster operational system behind it."
                     />
                     <div className="space-y-4">
                       {fitPoints.map((item, index) => (
@@ -383,10 +383,10 @@ export default function LandingPage() {
                     <div className="max-w-3xl">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8d69b3]">Start</p>
                       <h2 className="mt-4 text-4xl font-bold tracking-[-0.055em] text-[#453857] md:text-5xl lg:text-6xl">
-                        Bring the candy-glass feel into the real review flow.
+                        Start reviewing approval requests with more context and less friction.
                       </h2>
                       <p className="mt-5 text-base leading-8 text-[#665975] md:text-lg">
-                        The page is still the same React landing route, but it now feels softer, more branded, and more alive before users move into login.
+                        Sign in to route low-risk work faster, keep escalations visible, and give every reviewer the context they need to make a decision.
                       </p>
                     </div>
                     <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">

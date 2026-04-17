@@ -30,7 +30,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Welcome Back"
-      subtitle="Sign in to your account to continue through the review flow."
+      subtitle="Sign in to review incoming requests, approval decisions, and escalation activity."
       footer={
         <>
           Don&apos;t have an account?{' '}

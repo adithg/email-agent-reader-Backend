@@ -23,17 +23,17 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
             <div className="max-w-xl">
               <div className="candy-glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#8d69b3]">
                 <Sparkles className="h-3.5 w-3.5" />
-                Secure supabase auth
+                Secure account access
               </div>
               <p className="mt-7 text-sm font-semibold uppercase tracking-[0.28em] text-[#74648f]">Auto-Review Agent</p>
               <h1 className="mt-4 text-5xl font-bold leading-[0.94] tracking-[-0.06em] text-[#453857]">
-                A softer login surface for a
+                Secure sign-in for the
                 <span className="block bg-[linear-gradient(135deg,#ebb1ff_0%,#ffc6e9_40%,#8bcbff_100%)] bg-clip-text text-transparent">
-                  calmer review workflow.
+                  approval workspace.
                 </span>
               </h1>
               <p className="mt-6 max-w-lg text-lg leading-8 text-[#685b7c]">
-                Same Supabase email authentication, redesigned to feel like part of the product instead of a detached form screen.
+                Use your account credentials to access the review queue, request history, and approval tools in one place.
               </p>
             </div>
           </div>

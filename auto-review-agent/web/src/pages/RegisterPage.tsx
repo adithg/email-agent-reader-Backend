@@ -35,7 +35,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create Account"
-      subtitle="Set up your access to the approval workspace with the same cotton-candy glass style."
+      subtitle="Create your account to start submitting requests or reviewing approval work."
       footer={
         <>
           Already have an account?{' '}
