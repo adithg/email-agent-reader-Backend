@@ -51,7 +51,7 @@ export default function LandingPage() {
     () => [
       { label: 'Flow', id: 'how-it-works' },
       { label: 'Capabilities', id: 'capabilities' },
-      { label: 'Why it lands', id: 'why-it-fits' },
+      { label: 'Why teams choose it', id: 'why-it-fits' },
       { label: 'Start', id: 'cta' },
     ],
     []
@@ -114,16 +114,16 @@ export default function LandingPage() {
 
   const fitPoints = [
     {
-      title: 'Less dry, more dimensional',
-      body: 'The page now feels like a product brand surface instead of a polite static explainer.',
+      title: 'Fits the way teams already work',
+      body: 'Teams can keep using email as the intake channel while the platform adds structure, prioritization, and visibility behind the scenes.',
     },
     {
-      title: 'Still grounded in the workflow',
-      body: 'The copy and structure stay tied to what the app actually does: triage, summarize, route, and review.',
+      title: 'Less manual sorting, better decisions',
+      body: 'Summaries, urgency, and recommendation signals give reviewers the context they need before opening a long thread.',
     },
     {
-      title: 'Glass used with restraint',
-      body: 'The new skill helped conceptually, but the web implementation keeps the blur and layering purposeful instead of turning every block into frosted noise.',
+      title: 'Audit-ready from intake to resolution',
+      body: 'Request status, reviewer actions, and escalation history stay connected so teams can move quickly without losing accountability.',
     },
   ];
 
@@ -195,17 +195,17 @@ export default function LandingPage() {
               >
                 <div className="candy-glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.26em] text-[#8d69b3]">
                   <WandSparkles className="h-3.5 w-3.5" />
-                  Cotton-candy liquid glass interface
+                  AI-assisted approval workflow
                 </div>
                 <p className="mt-8 text-sm font-semibold uppercase tracking-[0.28em] text-[#74648f]">Auto-Review Agent</p>
                 <h1 className="mt-4 max-w-4xl text-5xl font-bold leading-[0.94] tracking-[-0.065em] text-[#453857] md:text-7xl lg:text-[5.7rem]">
-                  Make approval email review feel
+                  Make approval email review
                   <span className="block bg-[linear-gradient(135deg,#ebb1ff_0%,#ffc6e9_42%,#8bcbff_100%)] bg-clip-text text-transparent">
-                    lighter, sweeter, and faster.
+                    faster, clearer, and more reliable.
                   </span>
                 </h1>
                 <p className="mt-7 max-w-2xl text-lg leading-8 text-[#685b7c] md:text-xl">
-                  AI summaries, risk signals, and a calmer visual rhythm help reviewers move through requests without the usual queue fatigue.
+                  AI summaries, risk signals, and structured routing help teams move through approval work with less manual sorting and better judgment.
                 </p>
                 <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
                   <Button
@@ -286,12 +286,6 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
-                <div className="candy-glass-soft absolute -bottom-6 -left-4 hidden w-60 rounded-[28px] p-4 md:block">
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8d69b3]">AI output</p>
-                  <p className="mt-3 text-sm leading-6 text-[#665975]">
-                    Summary, urgency, recommendation, and audit context stay visible without crowding the reviewer.
-                  </p>
-                </div>
               </motion.div>
             </div>
           </section>
@@ -301,8 +295,8 @@ export default function LandingPage() {
               <div className={`mx-auto max-w-7xl transition-all duration-700 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
                 <SectionHeading
                   eyebrow="Flow"
-                  title="The page now has a stronger sequence, not just prettier boxes"
-                  subtitle="Each section has one job: explain the workflow, show the product shape, then close with a cleaner call to action."
+                  title="From incoming email to confident approval in three steps"
+                  subtitle="The platform captures requests, adds AI context, and routes work to the right reviewer before time is lost in inbox triage."
                 />
                 <div className="mt-12 grid gap-5 lg:grid-cols-3">
                   {workflowSteps.map((step) => (
@@ -326,8 +320,8 @@ export default function LandingPage() {
                 <div className="grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
                   <SectionHeading
                     eyebrow="Capabilities"
-                    title="The product story is still operational, but the mood is no longer dry"
-                    subtitle="This redesign keeps the existing React structure and turns the landing page into a softer, more premium SaaS entry point with better contrast and spacing." 
+                    title="Built to reduce review time without sacrificing control"
+                    subtitle="Auto-Review Agent gives teams faster intake, stronger context, and clearer next steps across every request." 
                   />
                   <div className="grid gap-4 sm:grid-cols-2">
                     {capabilityCards.map((feature) => {
@@ -354,9 +348,9 @@ export default function LandingPage() {
                 <div className="candy-glass rounded-[38px] px-6 py-7 md:px-10 md:py-10">
                   <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
                     <SectionHeading
-                      eyebrow="Why it lands"
-                      title="A better fit for this app than the previous warmer glass treatment"
-                      subtitle="Your new skill is useful when translated into web terms: grouped material, controlled blur, and fewer but stronger interactive surfaces."
+                      eyebrow="Why teams choose it"
+                      title="Designed for organizations that still run approvals through email"
+                      subtitle="Auto-Review Agent keeps the inbox front door intact while giving teams a faster operational system behind it."
                     />
                     <div className="space-y-4">
                       {fitPoints.map((item, index) => (
@@ -383,10 +377,10 @@ export default function LandingPage() {
                     <div className="max-w-3xl">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#8d69b3]">Start</p>
                       <h2 className="mt-4 text-4xl font-bold tracking-[-0.055em] text-[#453857] md:text-5xl lg:text-6xl">
-                        Bring the candy-glass feel into the real review flow.
+                        Start reviewing approval requests with more context and less friction.
                       </h2>
                       <p className="mt-5 text-base leading-8 text-[#665975] md:text-lg">
-                        The page is still the same React landing route, but it now feels softer, more branded, and more alive before users move into login.
+                        Sign in to route low-risk work faster, keep escalations visible, and give every reviewer the context they need to make a decision.
                       </p>
                     </div>
                     <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
