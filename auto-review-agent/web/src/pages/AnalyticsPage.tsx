@@ -1,105 +1,158 @@
-import { Card } from '../components/ui/Card';
 import { BarChart, PieChart, TrendingUp, Clock, ShieldCheck } from 'lucide-react';
+import { Card } from '../components/ui/Card';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
+import { useDashboardStats } from '../hooks/useSupabase';
 
 export default function AnalyticsPage() {
+  const { stats, loading, error, refetch } = useDashboardStats({ isAdmin: true });
+  const totalOutcomes =
+    stats.autoApproved + stats.approved + stats.rejected + stats.pendingReview + stats.escalated;
+  const totalRisk =
+    stats.riskDistribution.low +
+      stats.riskDistribution.medium +
+      stats.riskDistribution.high || 1;
+
+  if (loading) {
+    return <LoadingState message="Loading analytics..." />;
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="We couldn't load analytics"
+        message={error}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
+
+  if (stats.totalRequests === 0) {
+    return (
+      <EmptyState
+        title="No analytics yet"
+        description="Analytics will appear after the first requests are processed."
+      />
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-primary-dark">Analytics</h1>
-        <p className="text-muted">Insights and performance metrics for the approval system.</p>
+        <p className="text-muted">Live performance metrics for the approval system.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card title="Request Volume Over Time" subtitle="Daily submission trends">
-          <div className="h-64 flex items-end gap-2 pt-4">
-            {[40, 65, 45, 90, 75, 55, 80].map((val, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full bg-accent-blue/20 hover:bg-accent-blue/40 transition-colors rounded-t-md relative group"
-                  style={{ height: `${val}%` }}
-                >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary-dark text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    {val}
-                  </div>
-                </div>
-                <span className="text-[10px] text-muted uppercase font-bold">Day {i + 1}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card title="Approval Outcomes" subtitle="Distribution of final decisions">
-          <div className="flex items-center justify-around h-64">
-            <div className="relative w-40 h-40">
-              <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-100" strokeWidth="4" />
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-success" strokeWidth="4" strokeDasharray="70, 100" />
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-danger" strokeWidth="4" strokeDasharray="15, 100" strokeDashoffset="-70" />
-                <circle cx="18" cy="18" r="16" fill="none" className="stroke-warning" strokeWidth="4" strokeDasharray="15, 100" strokeDashoffset="-85" />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold text-primary-dark">124</span>
-                <span className="text-[10px] text-muted uppercase font-bold">Total</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-3 h-3 rounded-full bg-success" />
-                <span className="text-muted">Approved (70%)</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-3 h-3 rounded-full bg-danger" />
-                <span className="text-muted">Rejected (15%)</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-3 h-3 rounded-full bg-warning" />
-                <span className="text-muted">Pending (15%)</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Risk Level Distribution" subtitle="AI classification breakdown">
-          <div className="space-y-6 pt-4">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <Card title="Approval Outcomes" subtitle="Current distribution of request decisions">
+          <div className="grid gap-4 pt-2">
             {[
-              { label: 'Low Risk', value: 70, color: 'bg-success' },
-              { label: 'Medium Risk', value: 40, color: 'bg-warning' },
-              { label: 'High Risk', value: 14, color: 'bg-danger' },
-            ].map((item, idx) => (
-              <div key={idx} className="space-y-2">
-                <div className="flex justify-between text-sm font-medium">
-                  <span>{item.label}</span>
-                  <span className="text-muted">{item.value} requests</span>
+              { label: 'Auto-Approved', value: stats.autoApproved, color: 'bg-success' },
+              { label: 'Approved by Admin', value: stats.approved, color: 'bg-blue-500' },
+              { label: 'Pending Review', value: stats.pendingReview, color: 'bg-warning' },
+              { label: 'Escalated', value: stats.escalated, color: 'bg-danger' },
+              { label: 'Rejected', value: stats.rejected, color: 'bg-slate-500' },
+            ].map((item) => (
+              <div key={item.label} className="space-y-2">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span className="text-primary-dark">{item.label}</span>
+                  <span className="text-muted">{item.value}</span>
                 </div>
-                <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className={`h-full ${item.color}`} style={{ width: `${(item.value / 124) * 100}%` }} />
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full ${item.color}`}
+                    style={{ width: `${(item.value / Math.max(totalOutcomes, 1)) * 100}%` }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <Card className="flex flex-col items-center justify-center text-center p-8">
-            <div className="bg-blue-50 p-3 rounded-full mb-4">
-              <Clock className="w-8 h-8 text-accent-blue" />
+        <Card title="Risk Breakdown" subtitle="How the AI is classifying incoming requests">
+          <div className="grid gap-4 pt-2">
+            {[
+              { label: 'Low Risk', value: stats.riskDistribution.low, color: 'bg-success' },
+              { label: 'Medium Risk', value: stats.riskDistribution.medium, color: 'bg-warning' },
+              { label: 'High Risk', value: stats.riskDistribution.high, color: 'bg-danger' },
+            ].map((item) => (
+              <div key={item.label} className="space-y-2">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span className="text-primary-dark">{item.label}</span>
+                  <span className="text-muted">{item.value}</span>
+                </div>
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full ${item.color}`}
+                    style={{ width: `${(item.value / totalRisk) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:col-span-2">
+          <Card className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="mb-4 rounded-full bg-blue-50 p-3">
+              <BarChart className="h-8 w-8 text-accent-blue" />
             </div>
-            <h4 className="text-sm font-bold text-muted uppercase tracking-wider mb-1">Avg. Approval Time</h4>
-            <p className="text-4xl font-black text-primary-dark">2.4h</p>
-            <p className="text-xs text-success font-bold mt-2 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              15% faster than last week
-            </p>
+            <h4 className="mb-1 text-sm font-bold uppercase tracking-wider text-muted">Total Requests</h4>
+            <p className="text-4xl font-black text-primary-dark">{stats.totalRequests}</p>
+            <p className="mt-2 text-xs font-medium text-muted">Live total across the requests table</p>
           </Card>
-          <Card className="flex flex-col items-center justify-center text-center p-8">
-            <div className="bg-green-50 p-3 rounded-full mb-4">
-              <ShieldCheck className="w-8 h-8 text-success" />
+          <Card className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="mb-4 rounded-full bg-green-50 p-3">
+              <ShieldCheck className="h-8 w-8 text-success" />
             </div>
-            <h4 className="text-sm font-bold text-muted uppercase tracking-wider mb-1">Auto-Approval Rate</h4>
-            <p className="text-4xl font-black text-primary-dark">68%</p>
-            <p className="text-xs text-muted font-medium mt-2">Target: 75%</p>
+            <h4 className="mb-1 text-sm font-bold uppercase tracking-wider text-muted">Automation Rate</h4>
+            <p className="text-4xl font-black text-primary-dark">
+              {Math.round((stats.autoApproved / Math.max(stats.totalRequests, 1)) * 100)}%
+            </p>
+            <p className="mt-2 text-xs font-medium text-muted">Requests resolved without manual review</p>
+          </Card>
+          <Card className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="mb-4 rounded-full bg-amber-50 p-3">
+              <Clock className="h-8 w-8 text-warning" />
+            </div>
+            <h4 className="mb-1 text-sm font-bold uppercase tracking-wider text-muted">Review Backlog</h4>
+            <p className="text-4xl font-black text-primary-dark">{stats.pendingReview + stats.escalated}</p>
+            <p className="mt-2 text-xs font-medium text-muted">Requests still waiting on admin follow-up</p>
+          </Card>
+          <Card className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="mb-4 rounded-full bg-slate-100 p-3">
+              <TrendingUp className="h-8 w-8 text-slate-700" />
+            </div>
+            <h4 className="mb-1 text-sm font-bold uppercase tracking-wider text-muted">Approval Yield</h4>
+            <p className="text-4xl font-black text-primary-dark">
+              {Math.round(
+                ((stats.autoApproved + stats.approved) / Math.max(totalOutcomes, 1)) * 100
+              )}%
+            </p>
+            <p className="mt-2 text-xs font-medium text-muted">Share of requests that ended approved</p>
           </Card>
         </div>
+
+        <Card title="Analytics Notes" subtitle="What these numbers represent">
+          <div className="space-y-3 text-sm text-muted">
+            <p>
+              Risk and decision counts are computed with filtered count queries instead of downloading the full requests table.
+            </p>
+            <p>
+              These metrics respect the same row-level access controls as the rest of the app, so admin-only analytics stay admin-only.
+            </p>
+            <p>
+              If you want trend charts next, the clean follow-up would be adding time-bucketed SQL views or RPC endpoints rather than rebuilding them in the browser.
+            </p>
+          </div>
+        </Card>
+
+        <Card title="Legend" subtitle="Quick visual mapping">
+          <div className="grid gap-3 text-sm text-muted">
+            <div className="flex items-center gap-2"><PieChart className="h-4 w-4 text-success" />Green bars indicate approvals or low-risk requests.</div>
+            <div className="flex items-center gap-2"><PieChart className="h-4 w-4 text-warning" />Amber bars indicate medium risk or pending manual review.</div>
+            <div className="flex items-center gap-2"><PieChart className="h-4 w-4 text-danger" />Red bars indicate escalated or high-risk traffic.</div>
+          </div>
+        </Card>
       </div>
     </div>
   );

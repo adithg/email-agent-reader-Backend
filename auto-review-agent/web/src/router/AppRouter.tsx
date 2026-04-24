@@ -41,12 +41,14 @@ const router = createBrowserRouter([
           { path: '/submit', element: <SubmitRequestPage /> },
           {
             element: <AdminRoute />,
-            children: [{ path: '/queue', element: <ApprovalQueuePage /> }],
+            children: [
+              { path: '/queue', element: <ApprovalQueuePage /> },
+              { path: '/activity', element: <ActivityLogPage /> },
+              { path: '/analytics', element: <AnalyticsPage /> },
+            ],
           },
           { path: '/request/:id', element: <RequestDetailPage /> },
           { path: '/my-requests', element: <MyRequestsPage /> },
-          { path: '/activity', element: <ActivityLogPage /> },
-          { path: '/analytics', element: <AnalyticsPage /> },
         ],
       },
     ],

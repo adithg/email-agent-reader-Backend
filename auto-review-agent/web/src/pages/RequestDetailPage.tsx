@@ -4,32 +4,67 @@ import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, MessageSquare, Clock, 
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
 import { useRequest, useRequestActivityLog, approveRequest, rejectRequest, escalateRequest } from '../hooks/useSupabase';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function RequestDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const { request, loading, refetch } = useRequest(id);
-  const { logs } = useRequestActivityLog(request?.id);
+  const { profile, user, isAdmin } = useAuth();
+  const { request, loading, error, refetch } = useRequest(id, {
+    isAdmin,
+    requesterEmail: user?.email,
+  });
+  const {
+    data: logs,
+    loading: logsLoading,
+    error: logsError,
+    refetch: refetchLogs,
+  } = useRequestActivityLog(request?.id);
   const [notes, setNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
-  if (loading) return <div className="py-20 text-center text-muted">Loading request...</div>;
-  if (!request) return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <h2 className="text-2xl font-bold text-primary-dark">Request Not Found</h2>
-      <Button onClick={() => navigate('/queue')} className="mt-6">Back to Queue</Button>
-    </div>
-  );
+  if (loading) {
+    return <LoadingState message="Loading request..." />;
+  }
 
-  const doAction = async (fn: Function, msg: string) => {
+  if (error) {
+    return (
+      <ErrorState
+        title="We couldn't load this request"
+        message={error}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
+
+  if (!request) {
+    return (
+      <EmptyState
+        title="Request not found"
+        description="It may have been removed or you may not have access to it."
+        action={<Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>}
+      />
+    );
+  }
+
+  const doAction = async (
+    fn: typeof approveRequest | typeof rejectRequest | typeof escalateRequest,
+    msg: string
+  ) => {
     setActionLoading(true);
-    const { error } = await fn(request.id, notes, profile?.full_name || 'Admin');
-    if (error) setActionMsg('Error: ' + error.message);
-    else { setActionMsg(msg); await refetch(); }
+    const { error: actionError } = await fn(request.id, notes, {
+      id: profile?.id,
+      name: profile?.full_name || 'Admin',
+    });
+    if (actionError) {
+      setActionMsg('Error: ' + actionError.message);
+    } else {
+      setActionMsg(msg);
+      await Promise.all([refetch(), refetchLogs()]);
+    }
     setActionLoading(false);
   };
 
@@ -72,7 +107,15 @@ export default function RequestDetailPage() {
           </Card>
 
           <Card title="Audit Timeline" subtitle="History of actions taken on this request">
-            {logs.length === 0 ? <p className="text-muted text-sm">No activity yet.</p> : (
+            {logsLoading ? (
+              <LoadingState message="Loading audit timeline..." />
+            ) : logsError ? (
+              <ErrorState
+                title="We couldn't load the audit timeline"
+                message={logsError}
+                onRetry={() => void refetchLogs()}
+              />
+            ) : logs.length === 0 ? <p className="text-muted text-sm">No activity yet.</p> : (
               <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-slate-200">
                 {logs.map((entry, idx) => (
                   <div key={entry.id} className="relative flex items-start">
@@ -115,7 +158,7 @@ export default function RequestDetailPage() {
             )}
           </Card>
 
-          {(request.status === 'pending' || request.status === 'escalated') && (
+          {isAdmin && (request.status === 'pending' || request.status === 'escalated') && (
             <Card title="Admin Actions">
               {actionMsg && <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">{actionMsg}</div>}
               <div className="space-y-4">

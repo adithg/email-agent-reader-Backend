@@ -1,22 +1,38 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, CheckCircle, Clock, XCircle, Eye } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Table } from '../components/ui/Table';
 import { Badge } from '../components/ui/Badge';
-import { useMyRequests } from '../hooks/useSupabase';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
+import { Pagination } from '../components/ui/Pagination';
+import { useDashboardStats, useMyRequests } from '../hooks/useSupabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Request } from '../lib/supabase';
 
 export default function MyRequestsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { requests, loading } = useMyRequests(user?.email);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const {
+    data: requests,
+    loading,
+    error,
+    refetch,
+    totalCount,
+    pageCount,
+  } = useMyRequests({ requesterEmail: user?.email, page, pageSize });
+  const { stats: statsData, loading: statsLoading } = useDashboardStats({
+    requesterEmail: user?.email,
+    isAdmin: false,
+  });
 
-  const stats = [
-    { title: 'Total Submitted', value: requests.length, icon: FileText, color: 'bg-blue-500' },
-    { title: 'Approved', value: requests.filter(r => r.status === 'approved' || r.status === 'auto_approved').length, icon: CheckCircle, color: 'bg-green-500' },
-    { title: 'Pending', value: requests.filter(r => r.status === 'pending').length, icon: Clock, color: 'bg-amber-500' },
-    { title: 'Rejected', value: requests.filter(r => r.status === 'rejected').length, icon: XCircle, color: 'bg-red-500' },
+  const statCards = [
+    { title: 'Total Submitted', value: statsData.totalRequests, icon: FileText, color: 'bg-blue-500' },
+    { title: 'Approved', value: statsData.approved + statsData.autoApproved, icon: CheckCircle, color: 'bg-green-500' },
+    { title: 'Pending', value: statsData.pendingReview, icon: Clock, color: 'bg-amber-500' },
+    { title: 'Rejected', value: statsData.rejected, icon: XCircle, color: 'bg-red-500' },
   ];
 
   const columns = [
@@ -32,16 +48,38 @@ export default function MyRequestsPage() {
     <div className="space-y-8">
       <div><h1 className="text-2xl font-bold text-primary-dark">My Requests</h1><p className="text-muted">Track the status of your approval submissions.</p></div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, idx) => (
+        {statCards.map((stat, idx) => (
           <Card key={idx} className="flex items-center gap-4 p-4">
             <div className={`${stat.color} p-3 rounded-xl text-white`}><stat.icon className="w-6 h-6" /></div>
-            <div><p className="text-sm text-muted font-medium">{stat.title}</p><h3 className="text-2xl font-bold text-primary-dark">{stat.value}</h3></div>
+            <div><p className="text-sm text-muted font-medium">{stat.title}</p><h3 className="text-2xl font-bold text-primary-dark">{statsLoading ? '-' : stat.value}</h3></div>
           </Card>
         ))}
       </div>
       <Card>
-        {loading ? <div className="py-12 text-center text-muted">Loading your requests...</div> : requests.length === 0 ? <div className="py-12 text-center text-muted">You haven't submitted any requests yet.</div> : (
-          <div className="-mx-6 -mb-6"><Table columns={columns} data={requests} /></div>
+        {loading ? (
+          <LoadingState message="Loading your requests..." />
+        ) : error ? (
+          <ErrorState
+            title="We couldn't load your requests"
+            message={error}
+            onRetry={() => void refetch()}
+          />
+        ) : requests.length === 0 ? (
+          <EmptyState
+            title="You haven't submitted any requests yet"
+            description="Once you submit a request, you'll be able to track it here."
+          />
+        ) : (
+          <div className="-mx-6 -mb-6">
+            <Table columns={columns} data={requests} />
+            <Pagination
+              page={page}
+              pageCount={pageCount}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          </div>
         )}
       </Card>
     </div>

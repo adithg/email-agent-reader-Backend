@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Eye, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Card } from '../components/ui/Card';
@@ -7,6 +7,8 @@ import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Table } from '../components/ui/Table';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
+import { Pagination } from '../components/ui/Pagination';
 import { useRequests, approveRequest, rejectRequest, escalateRequest } from '../hooks/useSupabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Request } from '../lib/supabase';
@@ -14,11 +16,28 @@ import { Request } from '../lib/supabase';
 export default function ApprovalQueuePage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { requests, loading, refetch } = useRequests();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [riskFilter, setRiskFilter] = useState('all');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const {
+    data: requests,
+    loading,
+    error,
+    refetch,
+    totalCount,
+    pageCount,
+  } = useRequests({
+    page,
+    pageSize,
+    search: searchTerm,
+    status: statusFilter,
+    riskLevel: riskFilter,
+    isAdmin: true,
+  });
 
   const statuses = [
     { value: 'all', label: 'All Statuses' },
@@ -36,31 +55,52 @@ export default function ApprovalQueuePage() {
     { value: 'high', label: 'High Risk' },
   ];
 
-  const filtered = requests.filter(r => {
-    const matchSearch = !searchTerm || r.title.toLowerCase().includes(searchTerm.toLowerCase()) || r.requester_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = statusFilter === 'all' || r.status === statusFilter;
-    const matchRisk = riskFilter === 'all' || r.risk_level === riskFilter;
-    return matchSearch && matchStatus && matchRisk;
-  });
+  useEffect(() => {
+    setPage(1);
+  }, [riskFilter, searchTerm, statusFilter]);
 
   const handleApprove = async (req: Request) => {
     setActionLoading(req.id);
-    await approveRequest(req.id, 'Approved from queue', profile?.full_name || 'Admin');
-    await refetch();
+    setActionError(null);
+    const { error: approveError } = await approveRequest(req.id, 'Approved from queue', {
+      id: profile?.id,
+      name: profile?.full_name || 'Admin',
+    });
+    if (approveError) {
+      setActionError(approveError.message);
+    } else {
+      await refetch();
+    }
     setActionLoading(null);
   };
 
   const handleReject = async (req: Request) => {
     setActionLoading(req.id);
-    await rejectRequest(req.id, 'Rejected from queue', profile?.full_name || 'Admin');
-    await refetch();
+    setActionError(null);
+    const { error: rejectError } = await rejectRequest(req.id, 'Rejected from queue', {
+      id: profile?.id,
+      name: profile?.full_name || 'Admin',
+    });
+    if (rejectError) {
+      setActionError(rejectError.message);
+    } else {
+      await refetch();
+    }
     setActionLoading(null);
   };
 
   const handleEscalate = async (req: Request) => {
     setActionLoading(req.id);
-    await escalateRequest(req.id, 'Escalated from queue', profile?.full_name || 'Admin');
-    await refetch();
+    setActionError(null);
+    const { error: escalateError } = await escalateRequest(req.id, 'Escalated from queue', {
+      id: profile?.id,
+      name: profile?.full_name || 'Admin',
+    });
+    if (escalateError) {
+      setActionError(escalateError.message);
+    } else {
+      await refetch();
+    }
     setActionLoading(null);
   };
 
@@ -90,7 +130,7 @@ export default function ApprovalQueuePage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div><h1 className="text-2xl font-bold text-primary-dark">Approval Queue</h1><p className="text-muted">Manage and review all incoming approval requests.</p></div>
-        <Button variant="outline" className="gap-2"><Filter className="w-4 h-4" />Export CSV</Button>
+        <Button variant="outline" className="gap-2" disabled><Filter className="w-4 h-4" />Export CSV</Button>
       </div>
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -98,9 +138,34 @@ export default function ApprovalQueuePage() {
           <Select options={statuses} defaultValue="all" onChange={(e: any) => setStatusFilter(e.target.value)} />
           <Select options={riskLevels} defaultValue="all" onChange={(e: any) => setRiskFilter(e.target.value)} />
         </div>
-        {loading ? <div className="py-12 text-center text-muted">Loading requests...</div> : (
+        {actionError ? (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {actionError}
+          </div>
+        ) : null}
+        {loading ? (
+          <LoadingState message="Loading requests..." />
+        ) : error ? (
+          <ErrorState
+            title="We couldn't load the approval queue"
+            message={error}
+            onRetry={() => void refetch()}
+          />
+        ) : requests.length === 0 ? (
+          <EmptyState
+            title="No requests match the current filters"
+            description="Try adjusting the search, status, or risk filters."
+          />
+        ) : (
           <div className="-mx-6 -mb-6">
-            <Table columns={columns} data={filtered} onRowClick={(req) => navigate(`/request/${req.id}`)} />
+            <Table columns={columns} data={requests} onRowClick={(req) => navigate(`/request/${req.id}`)} />
+            <Pagination
+              page={page}
+              pageCount={pageCount}
+              totalCount={totalCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </Card>

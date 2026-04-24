@@ -16,8 +16,8 @@ const navLinks = [
   { name: 'Submit Request', path: '/submit', icon: PlusCircle },
   { name: 'Approval Queue', path: '/queue', icon: ListTodo, adminOnly: true },
   { name: 'My Requests', path: '/my-requests', icon: History },
-  { name: 'Activity Log', path: '/activity', icon: Activity },
-  { name: 'Analytics', path: '/analytics', icon: BarChart3 },
+  { name: 'Activity Log', path: '/activity', icon: Activity, adminOnly: true },
+  { name: 'Analytics', path: '/analytics', icon: BarChart3, adminOnly: true },
 ];
 
 export function Sidebar() {

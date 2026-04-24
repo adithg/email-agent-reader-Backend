@@ -1,242 +1,559 @@
-import { useEffect, useState, useCallback } from 'react';
-import { supabase, Request, ActivityLog } from '../lib/supabase';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityLog, Request, supabase } from '../lib/supabase';
 
-// ─── Requests ──────────────────────────────────────────────────────────────
+const DEFAULT_PAGE_SIZE = 10;
 
-export function useRequests() {
+interface AccessScope {
+  isAdmin?: boolean;
+  requesterEmail?: string | null;
+}
+
+interface PaginationOptions {
+  page?: number;
+  pageSize?: number;
+}
+
+interface RequestsQueryOptions extends PaginationOptions, AccessScope {
+  search?: string;
+  status?: string;
+  riskLevel?: string;
+  statuses?: Request['status'][];
+}
+
+interface ActivityLogQueryOptions extends PaginationOptions {
+  search?: string;
+  action?: string;
+  date?: string;
+  requestId?: number | null;
+  enabled?: boolean;
+}
+
+interface PaginatedResult<T> {
+  data: T[];
+  totalCount: number;
+  pageCount: number;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+
+interface DashboardStats {
+  totalRequests: number;
+  autoApproved: number;
+  pendingReview: number;
+  escalated: number;
+  approved: number;
+  rejected: number;
+  riskDistribution: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+}
+
+export interface ActionActor {
+  id?: string | null;
+  name: string;
+}
+
+const EMPTY_STATS: DashboardStats = {
+  totalRequests: 0,
+  autoApproved: 0,
+  pendingReview: 0,
+  escalated: 0,
+  approved: 0,
+  rejected: 0,
+  riskDistribution: {
+    low: 0,
+    medium: 0,
+    high: 0,
+  },
+};
+
+function normalizeSearchTerm(term?: string) {
+  return term?.trim().replace(/[%_]/g, '').replace(/,/g, ' ') ?? '';
+}
+
+function applyRequestAccessScope<TQuery>(query: TQuery, access: AccessScope) {
+  if (access.isAdmin || !access.requesterEmail) {
+    return query;
+  }
+
+  return (query as any).eq('requester_email', access.requesterEmail) as TQuery;
+}
+
+function applyRequestFilters<TQuery>(query: TQuery, options: RequestsQueryOptions) {
+  let nextQuery = applyRequestAccessScope(query, options);
+
+  if (options.statuses?.length) {
+    nextQuery = (nextQuery as any).in('status', options.statuses) as TQuery;
+  }
+
+  if (options.status && options.status !== 'all') {
+    nextQuery = (nextQuery as any).eq('status', options.status) as TQuery;
+  }
+
+  if (options.riskLevel && options.riskLevel !== 'all') {
+    nextQuery = (nextQuery as any).eq('risk_level', options.riskLevel) as TQuery;
+  }
+
+  const searchTerm = normalizeSearchTerm(options.search);
+  if (searchTerm) {
+    nextQuery = (nextQuery as any).or(
+      [
+        `title.ilike.%${searchTerm}%`,
+        `requester_name.ilike.%${searchTerm}%`,
+        `requester_email.ilike.%${searchTerm}%`,
+        `category.ilike.%${searchTerm}%`,
+        `status.ilike.%${searchTerm}%`,
+        `ai_summary.ilike.%${searchTerm}%`,
+      ].join(',')
+    ) as TQuery;
+  }
+
+  return nextQuery;
+}
+
+async function fetchCount(
+  access: AccessScope,
+  options: {
+    status?: Request['status'];
+    statuses?: Request['status'][];
+    riskLevel?: NonNullable<Request['risk_level']>;
+  } = {}
+) {
+  let query = supabase.from('requests').select('id', { count: 'exact', head: true });
+  query = applyRequestAccessScope(query, access);
+
+  if (options.status) {
+    query = query.eq('status', options.status);
+  }
+
+  if (options.statuses?.length) {
+    query = query.in('status', options.statuses);
+  }
+
+  if (options.riskLevel) {
+    query = query.eq('risk_level', options.riskLevel);
+  }
+
+  const { count, error } = await query;
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return count ?? 0;
+}
+
+export function useRequests(options: RequestsQueryOptions = {}): PaginatedResult<Request> {
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
   const [requests, setRequests] = useState<Request[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageCount, setPageCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
+    if (!options.isAdmin && !options.requesterEmail) {
+      setRequests([]);
+      setTotalCount(0);
+      setPageCount(0);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data, error } = await supabase
-      .from('requests')
-      .select('*')
-      .order('submitted_at', { ascending: false });
-    if (error) setError(error.message);
-    else setRequests(data || []);
+    setError(null);
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize - 1;
+
+    let query = supabase.from('requests').select('*', { count: 'exact' });
+    query = applyRequestFilters(query, options);
+    query = query.order('submitted_at', { ascending: false }).range(start, end);
+
+    const { data, error: fetchError, count } = await query;
+
+    if (fetchError) {
+      setRequests([]);
+      setTotalCount(0);
+      setPageCount(0);
+      setError(fetchError.message);
+    } else {
+      const safeCount = count ?? 0;
+      setRequests(data ?? []);
+      setTotalCount(safeCount);
+      setPageCount(Math.max(1, Math.ceil(safeCount / pageSize)));
+    }
+
     setLoading(false);
-  }, []);
+  }, [
+    options.isAdmin,
+    options.page,
+    options.pageSize,
+    options.requesterEmail,
+    options.riskLevel,
+    options.search,
+    options.status,
+    options.statuses,
+    page,
+    pageSize,
+  ]);
 
   useEffect(() => {
-    fetch();
-    // Real-time subscription
-    const channel = supabase
-      .channel('requests-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, fetch)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetch]);
+    void fetch();
 
-  return { requests, loading, error, refetch: fetch };
+    const channel = supabase
+      .channel(`requests-changes-${options.isAdmin ? 'admin' : options.requesterEmail ?? 'anon'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
+        void fetch();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetch, options.isAdmin, options.requesterEmail]);
+
+  return {
+    data: requests,
+    totalCount,
+    pageCount,
+    loading,
+    error,
+    refetch: fetch,
+  };
 }
 
-export function useRequest(id: string | number | undefined) {
+export function useRequest(
+  id: string | number | undefined,
+  access: AccessScope = {}
+) {
   const [request, setRequest] = useState<Request | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('requests')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (error) setError(error.message);
-    else setRequest(data);
-    setLoading(false);
-  }, [id]);
+    if (!id) {
+      setRequest(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
 
-  useEffect(() => { fetch(); }, [fetch]);
+    if (!access.isAdmin && !access.requesterEmail) {
+      setRequest(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    let query = supabase.from('requests').select('*').eq('id', id);
+    query = applyRequestAccessScope(query, access);
+
+    const { data, error: fetchError } = await query.single();
+
+    if (fetchError) {
+      setRequest(null);
+      setError(fetchError.message);
+    } else {
+      setRequest(data);
+    }
+
+    setLoading(false);
+  }, [access.isAdmin, access.requesterEmail, id]);
+
+  useEffect(() => {
+    void fetch();
+  }, [fetch]);
 
   return { request, loading, error, refetch: fetch };
 }
 
-export function useMyRequests(requesterEmail: string | null | undefined) {
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!requesterEmail) { setLoading(false); return; }
-    const fetch = async () => {
-      const { data } = await supabase
-        .from('requests')
-        .select('*')
-        .eq('requester_email', requesterEmail)
-        .order('submitted_at', { ascending: false });
-      setRequests(data || []);
-      setLoading(false);
-    };
-    fetch();
-  }, [requesterEmail]);
-
-  return { requests, loading };
-}
-
-// ─── Dashboard Stats (computed from real data) ────────────────────────────
-
-export function useDashboardStats() {
-  const [stats, setStats] = useState({
-    totalRequests: 0,
-    autoApproved: 0,
-    pendingReview: 0,
-    escalated: 0,
-    riskDistribution: { low: 0, medium: 0, high: 0 },
+export function useMyRequests(options: PaginationOptions & { requesterEmail?: string | null }) {
+  return useRequests({
+    ...options,
+    requesterEmail: options.requesterEmail,
+    isAdmin: false,
   });
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase.from('requests').select('status, risk_level');
-      if (data) {
-        setStats({
-          totalRequests: data.length,
-          autoApproved: data.filter(r => r.status === 'auto_approved').length,
-          pendingReview: data.filter(r => r.status === 'pending').length,
-          escalated: data.filter(r => r.status === 'escalated').length,
-          riskDistribution: {
-            low: data.filter(r => r.risk_level === 'low').length,
-            medium: data.filter(r => r.risk_level === 'medium').length,
-            high: data.filter(r => r.risk_level === 'high').length,
-          },
-        });
-      }
-      setLoading(false);
-    };
-    fetch();
-
-    const channel = supabase
-      .channel('stats-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, fetch)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  return { stats, loading };
 }
 
-// ─── Activity Log ─────────────────────────────────────────────────────────
-
-export function useActivityLog() {
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
+export function useDashboardStats(access: AccessScope = {}) {
+  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    if (!access.isAdmin && !access.requesterEmail) {
+      setStats(EMPTY_STATS);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [
+        totalRequests,
+        autoApproved,
+        pendingReview,
+        escalated,
+        approved,
+        rejected,
+        low,
+        medium,
+        high,
+      ] = await Promise.all([
+        fetchCount(access),
+        fetchCount(access, { status: 'auto_approved' }),
+        fetchCount(access, { status: 'pending' }),
+        fetchCount(access, { status: 'escalated' }),
+        fetchCount(access, { status: 'approved' }),
+        fetchCount(access, { status: 'rejected' }),
+        fetchCount(access, { riskLevel: 'low' }),
+        fetchCount(access, { riskLevel: 'medium' }),
+        fetchCount(access, { riskLevel: 'high' }),
+      ]);
+
+      setStats({
+        totalRequests,
+        autoApproved,
+        pendingReview,
+        escalated,
+        approved,
+        rejected,
+        riskDistribution: { low, medium, high },
+      });
+    } catch (err) {
+      setStats(EMPTY_STATS);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard stats.');
+    } finally {
+      setLoading(false);
+    }
+  }, [access.isAdmin, access.requesterEmail]);
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from('activity_log')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      setLogs(data || []);
-      setLoading(false);
-    };
-    fetch();
+    void fetch();
 
     const channel = supabase
-      .channel('activity-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, fetch)
+      .channel(`dashboard-stats-${access.isAdmin ? 'admin' : access.requesterEmail ?? 'anon'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, () => {
+        void fetch();
+      })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
 
-  return { logs, loading };
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [access.isAdmin, access.requesterEmail, fetch]);
+
+  return { stats, loading, error, refetch: fetch };
+}
+
+export function useActivityLog(
+  options: ActivityLogQueryOptions = {}
+): PaginatedResult<ActivityLog> {
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageCount, setPageCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async () => {
+    if (options.enabled === false) {
+      setLogs([]);
+      setTotalCount(0);
+      setPageCount(0);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize - 1;
+
+    let query = supabase.from('activity_log').select('*', { count: 'exact' });
+
+    if (options.requestId) {
+      query = query.eq('request_id', options.requestId);
+    }
+
+    if (options.action && options.action !== 'all') {
+      query = query.eq('action', options.action);
+    }
+
+    const searchTerm = normalizeSearchTerm(options.search);
+    if (searchTerm) {
+      query = query.or(
+        [
+          `actor_name.ilike.%${searchTerm}%`,
+          `notes.ilike.%${searchTerm}%`,
+          `action.ilike.%${searchTerm}%`,
+        ].join(',')
+      );
+    }
+
+    if (options.date) {
+      const startOfDay = new Date(`${options.date}T00:00:00.000Z`).toISOString();
+      const endOfDay = new Date(`${options.date}T23:59:59.999Z`).toISOString();
+      query = query.gte('created_at', startOfDay).lte('created_at', endOfDay);
+    }
+
+    const { data, error: fetchError, count } = await query
+      .order('created_at', { ascending: false })
+      .range(start, end);
+
+    if (fetchError) {
+      setLogs([]);
+      setTotalCount(0);
+      setPageCount(0);
+      setError(fetchError.message);
+    } else {
+      const safeCount = count ?? 0;
+      setLogs(data ?? []);
+      setTotalCount(safeCount);
+      setPageCount(Math.max(1, Math.ceil(safeCount / pageSize)));
+    }
+
+    setLoading(false);
+  }, [options.action, options.date, options.enabled, options.requestId, options.search, page, pageSize]);
+
+  useEffect(() => {
+    void fetch();
+
+    if (options.enabled === false) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`activity-log-${options.requestId ?? 'all'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, () => {
+        void fetch();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [fetch, options.enabled, options.requestId]);
+
+  return {
+    data: logs,
+    totalCount,
+    pageCount,
+    loading,
+    error,
+    refetch: fetch,
+  };
 }
 
 export function useRequestActivityLog(requestId: number | null | undefined) {
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!requestId) { setLoading(false); return; }
-    const fetch = async () => {
-      const { data } = await supabase
-        .from('activity_log')
-        .select('*')
-        .eq('request_id', requestId)
-        .order('created_at', { ascending: true });
-      setLogs(data || []);
-      setLoading(false);
-    };
-    fetch();
-  }, [requestId]);
-
-  return { logs, loading };
+  return useActivityLog({
+    enabled: Boolean(requestId),
+    requestId: requestId ?? undefined,
+    page: 1,
+    pageSize: 100,
+  });
 }
 
-// ─── Actions ──────────────────────────────────────────────────────────────
-
-export async function approveRequest(requestId: number, notes: string, actorName: string) {
+export async function approveRequest(requestId: number, notes: string, actor: ActionActor) {
   const { error } = await supabase
     .from('requests')
-    .update({ status: 'approved', admin_notes: notes, reviewed_at: new Date().toISOString() })
+    .update({
+      status: 'approved',
+      admin_notes: notes,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: actor.id ?? null,
+    })
     .eq('id', requestId);
 
   if (!error) {
     await supabase.from('activity_log').insert({
       request_id: requestId,
       action: 'approved',
-      actor_name: actorName,
+      actor_id: actor.id ?? null,
+      actor_name: actor.name,
       notes,
     });
   }
+
   return { error };
 }
 
-export async function rejectRequest(requestId: number, notes: string, actorName: string) {
+export async function rejectRequest(requestId: number, notes: string, actor: ActionActor) {
   const { error } = await supabase
     .from('requests')
-    .update({ status: 'rejected', admin_notes: notes, reviewed_at: new Date().toISOString() })
+    .update({
+      status: 'rejected',
+      admin_notes: notes,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: actor.id ?? null,
+    })
     .eq('id', requestId);
 
   if (!error) {
     await supabase.from('activity_log').insert({
       request_id: requestId,
       action: 'rejected',
-      actor_name: actorName,
+      actor_id: actor.id ?? null,
+      actor_name: actor.name,
       notes,
     });
   }
+
   return { error };
 }
 
-export async function escalateRequest(requestId: number, notes: string, actorName: string) {
+export async function escalateRequest(requestId: number, notes: string, actor: ActionActor) {
   const { error } = await supabase
     .from('requests')
-    .update({ status: 'escalated', admin_notes: notes })
+    .update({
+      status: 'escalated',
+      admin_notes: notes,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: actor.id ?? null,
+    })
     .eq('id', requestId);
 
   if (!error) {
     await supabase.from('activity_log').insert({
       request_id: requestId,
       action: 'escalated',
-      actor_name: actorName,
+      actor_id: actor.id ?? null,
+      actor_name: actor.name,
       notes,
     });
   }
+
   return { error };
 }
-
-
-// ─── Submit Request (inserts into emails table, n8n picks it up automatically) ─
 
 export async function submitRequestViaEmail(payload: {
   from: string;
   subject: string;
   body: string;
 }) {
-  const { error } = await supabase
-    .from('emails')
-    .insert({
-      sender: payload.from,
-      subject: payload.subject,
-      body: payload.body,
-      read: false,
-      received_at: new Date().toISOString(),
-    });
+  const { error } = await supabase.from('emails').insert({
+    sender: payload.from,
+    subject: payload.subject,
+    body: payload.body,
+    read: false,
+    received_at: new Date().toISOString(),
+  });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(error.message);
+  }
 }

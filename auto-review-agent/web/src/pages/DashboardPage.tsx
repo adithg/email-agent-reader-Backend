@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   FileText,
@@ -14,8 +13,10 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Table } from '../components/ui/Table';
+import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
 import { useRequests, useDashboardStats } from '../hooks/useSupabase';
 import { Request } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardOutletContext {
   searchQuery: string;
@@ -25,9 +26,29 @@ type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { requests, loading: reqLoading } = useRequests();
-  const { stats, loading: statsLoading } = useDashboardStats();
   const { searchQuery } = useOutletContext<DashboardOutletContext>();
+  const { isAdmin, user } = useAuth();
+  const {
+    data: requests,
+    loading: reqLoading,
+    error: requestsError,
+    refetch: refetchRequests,
+  } = useRequests({
+    page: 1,
+    pageSize: 5,
+    search: searchQuery,
+    isAdmin,
+    requesterEmail: user?.email,
+  });
+  const {
+    stats,
+    loading: statsLoading,
+    error: statsError,
+    refetch: refetchStats,
+  } = useDashboardStats({
+    isAdmin,
+    requesterEmail: user?.email,
+  });
 
   const statCards = [
     { title: 'Total Requests', value: stats.totalRequests, icon: FileText, color: 'bg-blue-500', accent: 'border-blue-500', trend: 'All time' },
@@ -96,28 +117,6 @@ export default function DashboardPage() {
     },
   ];
 
-  const filteredRequests = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return requests;
-    }
-
-    return requests.filter((req) => {
-      const fields = [
-        req.title,
-        req.requester_name,
-        req.requester_email,
-        req.category,
-        req.status,
-        req.ai_summary,
-        String(req.id),
-      ];
-
-      return fields.some((field) => field?.toLowerCase().includes(normalizedQuery));
-    });
-  }, [requests, searchQuery]);
-
   const total =
     stats.riskDistribution.low + stats.riskDistribution.medium + stats.riskDistribution.high || 1;
 
@@ -151,20 +150,27 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <Card title="Recent Requests" subtitle="Latest approval submissions">
             {reqLoading ? (
-              <div className="py-12 text-center text-muted">Loading...</div>
+              <LoadingState message="Loading recent requests..." />
+            ) : requestsError ? (
+              <ErrorState
+                title="We couldn't load recent requests"
+                message={requestsError}
+                onRetry={() => void refetchRequests()}
+              />
             ) : requests.length === 0 ? (
-              <div className="py-12 text-center text-muted">
-                No requests yet. They will appear here once emails come in.
-              </div>
-            ) : filteredRequests.length === 0 ? (
-              <div className="py-12 text-center text-muted">
-                No requests matched "{searchQuery}".
-              </div>
+              <EmptyState
+                title={searchQuery ? `No requests matched "${searchQuery}"` : 'No requests yet'}
+                description={
+                  searchQuery
+                    ? 'Try a different search term.'
+                    : 'They will appear here once emails come in.'
+                }
+              />
             ) : (
               <div className="-mx-6 -mb-6">
                 <Table
                   columns={columns}
-                  data={filteredRequests.slice(0, 5)}
+                  data={requests}
                   onRowClick={(req) => navigate(`/request/${req.id}`)}
                 />
                 <div className="flex justify-center border-t border-border p-4">
@@ -183,26 +189,34 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-8">
           <Card title="Risk Distribution" subtitle="AI analysis breakdown">
-            <div className="mt-2 space-y-4">
-              {[
-                { label: 'Low Risk', count: stats.riskDistribution.low, color: 'bg-success' },
-                { label: 'Medium Risk', count: stats.riskDistribution.medium, color: 'bg-warning' },
-                { label: 'High Risk', count: stats.riskDistribution.high, color: 'bg-danger' },
-              ].map((item, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-primary-dark">{item.label}</span>
-                    <span className="text-muted">{item.count}</span>
+            {statsError ? (
+              <ErrorState
+                title="We couldn't load risk analytics"
+                message={statsError}
+                onRetry={() => void refetchStats()}
+              />
+            ) : (
+              <div className="mt-2 space-y-4">
+                {[
+                  { label: 'Low Risk', count: stats.riskDistribution.low, color: 'bg-success' },
+                  { label: 'Medium Risk', count: stats.riskDistribution.medium, color: 'bg-warning' },
+                  { label: 'High Risk', count: stats.riskDistribution.high, color: 'bg-danger' },
+                ].map((item, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-primary-dark">{item.label}</span>
+                      <span className="text-muted">{item.count}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${item.color}`}
+                        style={{ width: `${(item.count / total) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full rounded-full ${item.color}`}
-                      style={{ width: `${(item.count / total) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
           <Card title="Quick Actions">
             <div className="grid grid-cols-1 gap-3">
@@ -214,22 +228,26 @@ export default function DashboardPage() {
                 <Plus className="h-4 w-4 text-accent-blue" />
                 Submit New Request
               </Button>
-              <Button
-                onClick={() => navigate('/queue')}
-                className="w-full justify-start gap-3"
-                variant="outline"
-              >
-                <ListFilter className="h-4 w-4 text-amber-500" />
-                Review Pending Queue
-              </Button>
-              <Button
-                onClick={() => navigate('/activity')}
-                className="w-full justify-start gap-3"
-                variant="outline"
-              >
-                <History className="h-4 w-4 text-slate-500" />
-                View Activity Logs
-              </Button>
+              {isAdmin ? (
+                <>
+                  <Button
+                    onClick={() => navigate('/queue')}
+                    className="w-full justify-start gap-3"
+                    variant="outline"
+                  >
+                    <ListFilter className="h-4 w-4 text-amber-500" />
+                    Review Pending Queue
+                  </Button>
+                  <Button
+                    onClick={() => navigate('/activity')}
+                    className="w-full justify-start gap-3"
+                    variant="outline"
+                  >
+                    <History className="h-4 w-4 text-slate-500" />
+                    View Activity Logs
+                  </Button>
+                </>
+              ) : null}
             </div>
           </Card>
         </div>
