@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityLog, Request, supabase } from '../lib/supabase';
+import { Room, RoomBooking } from '../lib/supabase';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -467,6 +468,105 @@ export function useRequestActivityLog(requestId: number | null | undefined) {
     pageSize: 100,
   });
 }
+
+export interface RoomWithAvailability extends Room {
+  currentBooking: RoomBooking | null;
+  status: 'available' | 'occupied';
+}
+
+export function useRoomAvailability(selectedTime: Date) {
+  const [rooms, setRooms] = useState<RoomWithAvailability[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedTimeIso = selectedTime.toISOString();
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const { data: roomData, error: roomsError } = await supabase
+      .from('rooms')
+      .select('id, name, location, capacity, features, available')
+      .order('name', { ascending: true });
+
+    const fetchActiveBookings = async (tableName: 'room_bookings' | 'room_requests') => {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .lte('start_time', selectedTimeIso)
+        .gte('end_time', selectedTimeIso)
+        .neq('status', 'cancelled')
+        .order('start_time', { ascending: true });
+
+      return { data: data || [], error };
+    };
+
+    const [roomBookingsResult, roomRequestsResult] = await Promise.all([
+      fetchActiveBookings('room_bookings'),
+      fetchActiveBookings('room_requests'),
+    ]);
+
+    const bookingErrors = [roomBookingsResult.error, roomRequestsResult.error].filter(Boolean);
+    const bothBookingQueriesFailed = bookingErrors.length === 2;
+
+    if (roomsError || bothBookingQueriesFailed) {
+      setError(
+        roomsError?.message ||
+          bookingErrors.map((bookingError) => bookingError?.message).join(' ') ||
+          'Unable to load room availability.',
+      );
+      setRooms([]);
+      setLoading(false);
+      return;
+    }
+
+    const bookingData = [...roomBookingsResult.data, ...roomRequestsResult.data];
+
+    const bookingsByRoom = new Map<number, RoomBooking>();
+    (bookingData || []).forEach((booking) => {
+      if (!bookingsByRoom.has(booking.room_id)) {
+        bookingsByRoom.set(booking.room_id, booking);
+      }
+    });
+
+    setRooms(
+      (roomData || []).map((room) => {
+        const currentBooking = bookingsByRoom.get(room.id) || null;
+
+        return {
+          ...room,
+          currentBooking,
+          status: currentBooking ? 'occupied' : 'available',
+        };
+      }),
+    );
+    setLoading(false);
+  }, [selectedTimeIso]);
+
+  useEffect(() => {
+    fetch();
+
+    const roomsChannel = supabase
+      .channel('rooms-availability-rooms')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, fetch)
+      .subscribe();
+    const bookingsChannel = supabase
+      .channel('rooms-availability-bookings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_bookings' }, fetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_requests' }, fetch)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(roomsChannel);
+      supabase.removeChannel(bookingsChannel);
+    };
+  }, [fetch]);
+
+  return { rooms, loading, error, refetch: fetch };
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────
 
 export async function approveRequest(requestId: number, notes: string, actor: ActionActor) {
   const { error } = await supabase

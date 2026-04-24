@@ -70,3 +70,21 @@ export interface Profile {
   avatar_url: string | null;
   created_at: string;
 }
+
+export interface Room {
+  id: number;
+  name: string;
+  location: string | null;
+  capacity: number | null;
+  features: string[] | string | null;
+  available: boolean | null;
+}
+
+export interface RoomBooking {
+  id?: number;
+  room_id: number;
+  start_time: string;
+  end_time: string;
+  status: string | null;
+  booked_by_name?: string | null;
+}

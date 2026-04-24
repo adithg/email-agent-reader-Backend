@@ -10,6 +10,8 @@ import ActivityLogPage from '../pages/ActivityLogPage';
 import MyRequestsPage from '../pages/MyRequestsPage';
 import AnalyticsPage from '../pages/AnalyticsPage';
 import LandingPage from '../pages/LandingPage';
+import RoomAvailabilityPage from '../pages/RoomAvailabilityPage';
+import AssetUploadPage from '../pages/AssetUploadPage';
 import { AdminRoute, ProtectedRoute, PublicOnlyRoute } from './RouteGuards';
 
 const NotFound = () => (
@@ -45,10 +47,12 @@ const router = createBrowserRouter([
               { path: '/queue', element: <ApprovalQueuePage /> },
               { path: '/activity', element: <ActivityLogPage /> },
               { path: '/analytics', element: <AnalyticsPage /> },
+              { path: '/asset-upload', element: <AssetUploadPage /> },
             ],
           },
           { path: '/request/:id', element: <RequestDetailPage /> },
           { path: '/my-requests', element: <MyRequestsPage /> },
+          { path: '/rooms', element: <RoomAvailabilityPage /> },
         ],
       },
     ],

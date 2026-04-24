@@ -10,3 +10,4 @@ external-skills/
 
 # (optional) if you store them somewhere else
 downloads/
+.env

@@ -7,7 +7,9 @@ import {
   Activity,
   BarChart3,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  DoorOpen,
+  PackagePlus
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -15,9 +17,11 @@ const navLinks = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Submit Request', path: '/submit', icon: PlusCircle },
   { name: 'Approval Queue', path: '/queue', icon: ListTodo, adminOnly: true },
+  { name: 'Asset Upload', path: '/asset-upload', icon: PackagePlus, adminOnly: true },
   { name: 'My Requests', path: '/my-requests', icon: History },
   { name: 'Activity Log', path: '/activity', icon: Activity, adminOnly: true },
   { name: 'Analytics', path: '/analytics', icon: BarChart3, adminOnly: true },
+  { name: 'Room Availability', path: '/rooms', icon: DoorOpen },
 ];
 
 export function Sidebar() {
