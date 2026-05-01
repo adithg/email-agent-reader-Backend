@@ -17,14 +17,14 @@ export const Button: React.FC<ButtonProps> = (props) => {
     isLoading,
     ...rest
   } = props;
-  const baseStyles = 'inline-flex items-center justify-center font-medium transition-colors rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
+  const baseStyles = 'inline-flex items-center justify-center font-medium transition-colors rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none';
   
   const variants = {
-    primary: 'bg-accent-blue text-white hover:bg-blue-700 focus:ring-accent-blue',
-    secondary: 'bg-primary-dark text-white hover:bg-slate-800 focus:ring-primary-dark',
-    outline: 'border border-border bg-transparent hover:bg-slate-50 text-primary-dark focus:ring-slate-400',
-    danger: 'bg-danger text-white hover:bg-red-700 focus:ring-danger',
-    ghost: 'bg-transparent hover:bg-slate-100 text-primary-dark focus:ring-slate-400',
+    primary: 'border border-white/60 bg-[linear-gradient(135deg,#ebb1ff_0%,#ffc6e9_52%,#d1f2ff_100%)] text-[#4a3d5b] shadow-[0_12px_30px_rgba(171,131,208,0.22)] hover:brightness-[1.03] focus:ring-[#8d69b3]/40',
+    secondary: 'border border-white/55 bg-white/42 text-[#5d4e70] hover:bg-white/62 focus:ring-[#8d69b3]/30',
+    outline: 'border border-white/55 bg-white/24 text-[#5d4e70] hover:bg-white/50 focus:ring-[#8d69b3]/30',
+    danger: 'border border-[#f0b7c7] bg-[linear-gradient(135deg,#f6b7ca_0%,#ffd2dd_100%)] text-[#84455b] hover:brightness-[1.03] focus:ring-[#9a5b72]/35',
+    ghost: 'bg-transparent text-[#5d4e70] hover:bg-white/35 focus:ring-[#8d69b3]/25',
   };
 
   const sizes = {

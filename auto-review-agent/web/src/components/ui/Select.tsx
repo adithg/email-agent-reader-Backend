@@ -11,7 +11,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="w-full space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium text-primary-dark">
+          <label className="block text-sm font-medium text-[#453857]">
             {label}
           </label>
         )}
@@ -19,9 +19,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           <select
             ref={ref}
             className={`
-              block w-full px-3 py-2 bg-white border rounded-lg text-sm transition-shadow appearance-none
-              focus:outline-none focus:ring-2 focus:ring-accent-blue/20 focus:border-accent-blue
-              ${error ? 'border-danger' : 'border-border'}
+              app-input block w-full px-3 py-2 rounded-lg text-sm transition-shadow appearance-none
+              focus:outline-none focus:ring-2 focus:ring-[#8d69b3]/30
+              ${error ? 'border-danger' : ''}
               ${className}
             `}
             {...props}
@@ -33,7 +33,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ))}
           </select>
           <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-            <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-[#7c6d91]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
             </svg>
           </div>

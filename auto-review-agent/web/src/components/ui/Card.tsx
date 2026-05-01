@@ -8,11 +8,11 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 export const Card: React.FC<CardProps> = ({ children, className = '', title, subtitle, ...props }) => {
   return (
-    <div className={`bg-card border border-border rounded-xl card-shadow overflow-hidden ${className}`} {...props}>
+    <div className={`candy-glass rounded-[24px] overflow-hidden ${className}`} {...props}>
       {(title || subtitle) && (
-        <div className="px-6 py-4 border-bottom border-border">
-          {title && <h3 className="text-lg font-semibold text-primary-dark">{title}</h3>}
-          {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
+        <div className="border-b border-white/45 px-6 py-4">
+          {title && <h3 className="text-lg font-semibold text-[#453857]">{title}</h3>}
+          {subtitle && <p className="text-sm text-[#6f6281]">{subtitle}</p>}
         </div>
       )}
       <div className="p-6">{children}</div>

@@ -35,30 +35,33 @@ export function Sidebar() {
     .toUpperCase();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-blue-900 text-white flex flex-col z-30">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 bg-accent-blue rounded-lg flex items-center justify-center">
-          <ShieldCheck className="w-5 h-5 text-white" />
+    <aside className="candy-glass fixed bottom-3 left-3 top-3 z-30 flex w-64 flex-col rounded-[30px] text-[#514165]">
+      <div className="flex items-center gap-3 p-6">
+        <div className="candy-glass-soft flex h-9 w-9 items-center justify-center rounded-xl text-[#8d69b3]">
+          <ShieldCheck className="h-5 w-5" />
         </div>
-        <h1 className="text-lg font-bold tracking-tight">Auto-Review</h1>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8d69b3]">Team 9</p>
+          <h1 className="text-lg font-bold tracking-tight text-[#453857]">Auto-Review</h1>
+        </div>
       </div>
 
-      <nav className="flex-1 px-4 py-4 space-y-1">
+      <nav className="flex-1 space-y-1 px-4 py-4">
         {navLinks.filter((link) => !link.adminOnly || isAdmin).map((link) => (
           <NavLink
             key={link.path}
             to={link.path}
             className={({ isActive }) => `
-              flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+              flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
               ${isActive
-                ? 'bg-accent-blue text-white'
-                : 'text-blue-100/80 hover:text-white hover:bg-blue-800'}
+                ? 'bg-[linear-gradient(135deg,#ebb1ff_0%,#ffc6e9_52%,#d1f2ff_100%)] text-[#4a3d5b] shadow-[0_10px_24px_rgba(171,131,208,0.22)]'
+                : 'text-[#6a5a7e] hover:bg-white/45 hover:text-[#453857]'}
             `}
           >
             <link.icon className="w-5 h-5" />
             {link.name}
             {link.adminOnly && (
-              <span className="ml-auto text-[10px] bg-blue-800 text-blue-100 px-1.5 py-0.5 rounded uppercase font-bold">
+              <span className="ml-auto rounded bg-white/62 px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#8d69b3]">
                 Admin
               </span>
             )}
@@ -66,14 +69,14 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-blue-800">
-        <div className="flex items-center gap-3 px-3 py-2 mb-2">
-          <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center text-xs font-bold">
+      <div className="border-t border-white/50 p-4">
+        <div className="mb-2 flex items-center gap-3 px-3 py-2">
+          <div className="candy-glass-soft flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-[#6a5a7e]">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{profile?.full_name || user?.email || 'User'}</p>
-            <p className="text-xs text-blue-200/70 truncate">{isAdmin ? 'Administrator' : 'Requester'}</p>
+            <p className="truncate text-sm font-medium text-[#453857]">{profile?.full_name || user?.email || 'User'}</p>
+            <p className="truncate text-xs text-[#6a5a7e]">{isAdmin ? 'Administrator' : 'Requester'}</p>
           </div>
         </div>
         <button
@@ -81,9 +84,9 @@ export function Sidebar() {
             await signOut();
             navigate('/login', { replace: true });
           }}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-blue-100/80 hover:text-white hover:bg-blue-800 transition-colors"
+          className="w-full rounded-xl border border-white/55 bg-white/35 px-3 py-2 text-left text-sm font-medium text-[#5d4e70] transition-colors hover:bg-white/58"
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="mr-3 inline h-5 w-5" />
           Logout
         </button>
       </div>
