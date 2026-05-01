@@ -1,0 +1,33 @@
+name: Sync Upstream Main
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out fork main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Mirror DJpollo main into fork main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git remote add upstream https://github.com/DJpollo/email-agent-reader-Backend.git
+          git fetch upstream main
+
+          # Keep the fork's main branch as a clean mirror of upstream/main.
+          git checkout main
+          git reset --hard upstream/main
+          git push origin main --force-with-lease
