@@ -95,6 +95,7 @@ export default function DashboardPage() {
       accessor: (req: Request) => {
         const variants: Record<string, BadgeVariant> = {
           pending: 'warning',
+          info_requested: 'info',
           auto_approved: 'success',
           approved: 'success',
           rejected: 'danger',
@@ -102,6 +103,7 @@ export default function DashboardPage() {
         };
         const labels: Record<string, string> = {
           pending: 'Pending',
+          info_requested: 'Info Requested',
           auto_approved: 'Auto-Approved',
           approved: 'Approved',
           rejected: 'Rejected',

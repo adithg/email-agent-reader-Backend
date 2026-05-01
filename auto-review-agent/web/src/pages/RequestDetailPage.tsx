@@ -1,12 +1,87 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, MessageSquare, Clock, User, Building2, Calendar, ShieldAlert, Info } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, MessageSquare, Clock, User, Building2, Calendar, ShieldAlert, Info, PencilLine, MailQuestion, Sparkles } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { EmptyState, ErrorState, LoadingState } from '../components/ui/AsyncState';
-import { useRequest, useRequestActivityLog, approveRequest, rejectRequest, escalateRequest } from '../hooks/useSupabase';
+import { useRequest, useRequestActivityLog, approveRequest, rejectRequest, escalateRequest, requestMoreInfo, addRequestNote } from '../hooks/useSupabase';
 import { useAuth } from '../contexts/AuthContext';
+
+function getStatusVariant(status: string) {
+  if (status === 'approved' || status === 'auto_approved') return 'success';
+  if (status === 'pending') return 'warning';
+  if (status === 'info_requested') return 'info';
+  return 'danger';
+}
+
+function getTimelineEvent(action: string) {
+  switch (action) {
+    case 'approved':
+      return {
+        label: 'Approved',
+        icon: CheckCircle2,
+        badge: 'success' as const,
+        dot: 'bg-green-500 text-white',
+      };
+    case 'rejected':
+      return {
+        label: 'Rejected',
+        icon: XCircle,
+        badge: 'danger' as const,
+        dot: 'bg-red-500 text-white',
+      };
+    case 'escalated':
+      return {
+        label: 'Escalated',
+        icon: AlertTriangle,
+        badge: 'danger' as const,
+        dot: 'bg-amber-500 text-white',
+      };
+    case 'info_requested':
+      return {
+        label: 'Info Requested',
+        icon: MailQuestion,
+        badge: 'info' as const,
+        dot: 'bg-blue-500 text-white',
+      };
+    case 'note_added':
+      return {
+        label: 'Reviewer Note',
+        icon: PencilLine,
+        badge: 'warning' as const,
+        dot: 'bg-slate-700 text-white',
+      };
+    case 'auto_approved':
+      return {
+        label: 'Auto-Approved',
+        icon: Sparkles,
+        badge: 'success' as const,
+        dot: 'bg-emerald-500 text-white',
+      };
+    case 'risk_scored':
+      return {
+        label: 'AI Risk Scored',
+        icon: ShieldAlert,
+        badge: 'info' as const,
+        dot: 'bg-violet-500 text-white',
+      };
+    case 'request_submitted':
+      return {
+        label: 'Request Submitted',
+        icon: MessageSquare,
+        badge: 'neutral' as const,
+        dot: 'bg-slate-400 text-white',
+      };
+    default:
+      return {
+        label: action.replace(/_/g, ' '),
+        icon: Clock,
+        badge: 'neutral' as const,
+        dot: 'bg-slate-300 text-slate-700',
+      };
+  }
+}
 
 export default function RequestDetailPage() {
   const { id } = useParams();
@@ -25,6 +100,11 @@ export default function RequestDetailPage() {
   const [notes, setNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+
+  const actor = useMemo(() => ({
+    id: profile?.id,
+    name: profile?.full_name || 'Admin',
+  }), [profile?.full_name, profile?.id]);
 
   if (loading) {
     return <LoadingState message="Loading request..." />;
@@ -50,32 +130,66 @@ export default function RequestDetailPage() {
     );
   }
 
+  const buildNextAdminNotes = (nextNote: string) => {
+    const trimmed = nextNote.trim();
+    if (!trimmed) {
+      return request.admin_notes;
+    }
+
+    const stampedNote = `[${new Date().toLocaleString()}] ${actor.name}: ${trimmed}`;
+    return request.admin_notes ? `${request.admin_notes}\n\n${stampedNote}` : stampedNote;
+  };
+
   const doAction = async (
-    fn: typeof approveRequest | typeof rejectRequest | typeof escalateRequest,
+    fn: typeof approveRequest | typeof rejectRequest | typeof escalateRequest | typeof requestMoreInfo,
     msg: string
   ) => {
     setActionLoading(true);
-    const { error: actionError } = await fn(request.id, notes, {
-      id: profile?.id,
-      name: profile?.full_name || 'Admin',
-    });
+    const nextAdminNotes = buildNextAdminNotes(notes);
+    const { error: actionError } = await fn(request.id, notes.trim(), actor, nextAdminNotes);
     if (actionError) {
       setActionMsg('Error: ' + actionError.message);
     } else {
       setActionMsg(msg);
+      setNotes('');
       await Promise.all([refetch(), refetchLogs()]);
     }
     setActionLoading(false);
   };
 
-  const statusVariant = request.status === 'approved' || request.status === 'auto_approved' ? 'success' : request.status === 'pending' ? 'warning' : 'danger';
+  const saveNote = async () => {
+    const trimmed = notes.trim();
+    if (!trimmed) {
+      setActionMsg('Add a note before saving it to the timeline.');
+      return;
+    }
+
+    setActionLoading(true);
+    const { error: noteError } = await addRequestNote(
+      request.id,
+      trimmed,
+      actor,
+      buildNextAdminNotes(trimmed),
+    );
+
+    if (noteError) {
+      setActionMsg('Error: ' + noteError.message);
+    } else {
+      setActionMsg('📝 Note saved to the request timeline');
+      setNotes('');
+      await Promise.all([refetch(), refetchLogs()]);
+    }
+    setActionLoading(false);
+  };
+
+  const statusVariant = getStatusVariant(request.status);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-muted hover:text-primary-dark transition-colors font-medium"><ArrowLeft className="w-4 h-4" />Back</button>
         <div className="flex items-center gap-3">
-          <Badge variant={statusVariant}>{request.status.replace('_', ' ').toUpperCase()}</Badge>
+          <Badge variant={statusVariant}>{request.status.replace(/_/g, ' ').toUpperCase()}</Badge>
           <span className="text-sm text-muted">Submitted {new Date(request.submitted_at).toLocaleString()}</span>
         </div>
       </div>
@@ -99,8 +213,8 @@ export default function RequestDetailPage() {
               </div>
               {request.admin_notes && (
                 <div className="border-t border-border pt-6">
-                  <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Admin Notes</h3>
-                  <p className="text-primary-dark leading-relaxed">{request.admin_notes}</p>
+                  <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Reviewer Notes</h3>
+                  <p className="text-primary-dark leading-relaxed whitespace-pre-wrap">{request.admin_notes}</p>
                 </div>
               )}
             </div>
@@ -117,21 +231,28 @@ export default function RequestDetailPage() {
               />
             ) : logs.length === 0 ? <p className="text-muted text-sm">No activity yet.</p> : (
               <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-slate-200">
-                {logs.map((entry, idx) => (
+                {logs.map((entry) => {
+                  const event = getTimelineEvent(entry.action);
+                  const EventIcon = event.icon;
+
+                  return (
                   <div key={entry.id} className="relative flex items-start">
-                    <div className={`absolute left-0 w-10 h-10 rounded-full border-4 border-white flex items-center justify-center z-10 ${idx === 0 ? 'bg-accent-blue text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      <div className="w-2 h-2 rounded-full bg-current" />
+                    <div className={`absolute left-0 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white z-10 ${event.dot}`}>
+                      <EventIcon className="h-4 w-4" />
                     </div>
                     <div className="ml-14 flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-bold text-primary-dark">{entry.action}</span>
+                      <div className="mb-1 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold capitalize text-primary-dark">{event.label}</span>
+                          <Badge variant={event.badge}>{entry.action.replace(/_/g, ' ')}</Badge>
+                        </div>
                         <span className="text-xs text-muted">{new Date(entry.created_at).toLocaleString()}</span>
                       </div>
                       <p className="text-sm text-muted">by <span className="font-medium text-slate-700">{entry.actor_name || 'System'}</span></p>
-                      {entry.notes && <p className="mt-2 text-sm text-slate-600 bg-slate-50 p-3 rounded-lg italic">"{entry.notes}"</p>}
+                      {entry.notes && <p className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{entry.notes}</p>}
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </Card>
@@ -158,19 +279,38 @@ export default function RequestDetailPage() {
             )}
           </Card>
 
-          {isAdmin && (request.status === 'pending' || request.status === 'escalated') && (
-            <Card title="Admin Actions">
+          {request.status === 'info_requested' ? (
+            <Card className="border-l-4 border-l-blue-500 bg-blue-50/50">
+              <div className="flex items-start gap-3">
+                <MailQuestion className="mt-0.5 h-5 w-5 text-blue-600" />
+                <div>
+                  <h3 className="font-semibold text-primary-dark">Waiting on requester information</h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    This request has been paused until the requester provides the missing context noted below.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+
+          {isAdmin && (
+            <Card title="Reviewer Actions" subtitle="Add context, request follow-up, or resolve the request.">
               {actionMsg && <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">{actionMsg}</div>}
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-muted uppercase">Reviewer Notes</label>
-                  <textarea className="w-full p-3 text-sm bg-slate-50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-blue/20 min-h-[80px]" placeholder="Add notes..." value={notes} onChange={e => setNotes(e.target.value)} />
+                  <label className="text-xs font-bold text-muted uppercase">New Timeline Note</label>
+                  <textarea className="w-full p-3 text-sm bg-slate-50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-blue/20 min-h-[110px]" placeholder="Add reviewer context, approval rationale, or the follow-up you need from the requester..." value={notes} onChange={e => setNotes(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-1 gap-3 pt-2">
-                  <Button className="w-full gap-2" variant="primary" disabled={actionLoading} onClick={() => doAction(approveRequest, '✅ Request approved')}><CheckCircle2 className="w-4 h-4" />Approve Request</Button>
-                  <Button className="w-full gap-2" variant="danger" disabled={actionLoading} onClick={() => doAction(rejectRequest, '❌ Request rejected')}><XCircle className="w-4 h-4" />Reject Request</Button>
-                  <Button className="w-full gap-2" variant="outline" disabled={actionLoading} onClick={() => doAction(escalateRequest, '⚠️ Request escalated')}><AlertTriangle className="w-4 h-4 text-warning" />Escalate</Button>
-                  <Button className="w-full gap-2" variant="ghost"><MessageSquare className="w-4 h-4" />Request More Info</Button>
+                  <Button className="w-full gap-2" variant="secondary" disabled={actionLoading} onClick={saveNote}><PencilLine className="w-4 h-4" />Save Note</Button>
+                  {(request.status === 'pending' || request.status === 'escalated' || request.status === 'info_requested') ? (
+                    <>
+                      <Button className="w-full gap-2" variant="primary" disabled={actionLoading} onClick={() => doAction(approveRequest, '✅ Request approved')}><CheckCircle2 className="w-4 h-4" />Approve Request</Button>
+                      <Button className="w-full gap-2" variant="danger" disabled={actionLoading} onClick={() => doAction(rejectRequest, '❌ Request rejected')}><XCircle className="w-4 h-4" />Reject Request</Button>
+                      <Button className="w-full gap-2" variant="outline" disabled={actionLoading} onClick={() => doAction(escalateRequest, '⚠️ Request escalated')}><AlertTriangle className="w-4 h-4 text-warning" />Escalate</Button>
+                      <Button className="w-full gap-2" variant="ghost" disabled={actionLoading} onClick={() => doAction(requestMoreInfo, '📨 Requester asked for more information')}><MessageSquare className="w-4 h-4" />Request More Info</Button>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </Card>

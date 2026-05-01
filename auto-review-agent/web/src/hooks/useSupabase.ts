@@ -57,6 +57,11 @@ export interface ActionActor {
   name: string;
 }
 
+type SupabaseErrorLike = {
+  code?: string;
+  message?: string;
+};
+
 const EMPTY_STATS: DashboardStats = {
   totalRequests: 0,
   autoApproved: 0,
@@ -70,6 +75,32 @@ const EMPTY_STATS: DashboardStats = {
     high: 0,
   },
 };
+
+function isCheckConstraintError(error: SupabaseErrorLike | null | undefined) {
+  return error?.code === '23514';
+}
+
+async function insertActivityLogWithFallback(
+  payload: {
+    request_id: number;
+    action: string;
+    actor_id: string | null;
+    actor_name: string;
+    notes: string;
+  },
+  fallbackAction?: string,
+) {
+  const { error } = await supabase.from('activity_log').insert(payload);
+
+  if (!error || !fallbackAction || !isCheckConstraintError(error)) {
+    return { error };
+  }
+
+  return supabase.from('activity_log').insert({
+    ...payload,
+    action: fallbackAction,
+  });
+}
 
 function normalizeSearchTerm(term?: string) {
   return term?.trim().replace(/[%_]/g, '').replace(/,/g, ' ') ?? '';
@@ -314,7 +345,7 @@ export function useDashboardStats(access: AccessScope = {}) {
       ] = await Promise.all([
         fetchCount(access),
         fetchCount(access, { status: 'auto_approved' }),
-        fetchCount(access, { status: 'pending' }),
+        fetchCount(access, { statuses: ['pending', 'info_requested'] }),
         fetchCount(access, { status: 'escalated' }),
         fetchCount(access, { status: 'approved' }),
         fetchCount(access, { status: 'rejected' }),
@@ -568,12 +599,17 @@ export function useRoomAvailability(selectedTime: Date) {
 
 // ─── Actions ──────────────────────────────────────────────────────────────
 
-export async function approveRequest(requestId: number, notes: string, actor: ActionActor) {
+export async function approveRequest(
+  requestId: number,
+  notes: string,
+  actor: ActionActor,
+  adminNotesOverride?: string | null,
+) {
   const { error } = await supabase
     .from('requests')
     .update({
       status: 'approved',
-      admin_notes: notes,
+      admin_notes: adminNotesOverride ?? notes,
       reviewed_at: new Date().toISOString(),
       reviewed_by: actor.id ?? null,
     })
@@ -592,12 +628,17 @@ export async function approveRequest(requestId: number, notes: string, actor: Ac
   return { error };
 }
 
-export async function rejectRequest(requestId: number, notes: string, actor: ActionActor) {
+export async function rejectRequest(
+  requestId: number,
+  notes: string,
+  actor: ActionActor,
+  adminNotesOverride?: string | null,
+) {
   const { error } = await supabase
     .from('requests')
     .update({
       status: 'rejected',
-      admin_notes: notes,
+      admin_notes: adminNotesOverride ?? notes,
       reviewed_at: new Date().toISOString(),
       reviewed_by: actor.id ?? null,
     })
@@ -616,12 +657,17 @@ export async function rejectRequest(requestId: number, notes: string, actor: Act
   return { error };
 }
 
-export async function escalateRequest(requestId: number, notes: string, actor: ActionActor) {
+export async function escalateRequest(
+  requestId: number,
+  notes: string,
+  actor: ActionActor,
+  adminNotesOverride?: string | null,
+) {
   const { error } = await supabase
     .from('requests')
     .update({
       status: 'escalated',
-      admin_notes: notes,
+      admin_notes: adminNotesOverride ?? notes,
       reviewed_at: new Date().toISOString(),
       reviewed_by: actor.id ?? null,
     })
@@ -635,6 +681,88 @@ export async function escalateRequest(requestId: number, notes: string, actor: A
       actor_name: actor.name,
       notes,
     });
+  }
+
+  return { error };
+}
+
+export async function requestMoreInfo(
+  requestId: number,
+  notes: string,
+  actor: ActionActor,
+  adminNotesOverride?: string | null,
+) {
+  const reviewedAt = new Date().toISOString();
+  const baseUpdate = {
+    admin_notes: adminNotesOverride ?? notes,
+    reviewed_at: reviewedAt,
+    reviewed_by: actor.id ?? null,
+  };
+
+  let { error } = await supabase
+    .from('requests')
+    .update({
+      ...baseUpdate,
+      status: 'info_requested',
+    })
+    .eq('id', requestId);
+
+  // Backward compatibility for DBs that still have the old status CHECK constraint.
+  if (error && isCheckConstraintError(error)) {
+    const fallback = await supabase
+      .from('requests')
+      .update({
+        ...baseUpdate,
+        status: 'pending',
+      })
+      .eq('id', requestId);
+
+    error = fallback.error;
+  }
+
+  if (!error) {
+    const { error: logError } = await insertActivityLogWithFallback({
+      request_id: requestId,
+      action: 'info_requested',
+      actor_id: actor.id ?? null,
+      actor_name: actor.name,
+      notes,
+    });
+
+    if (logError) {
+      return { error: logError };
+    }
+  }
+
+  return { error };
+}
+
+export async function addRequestNote(
+  requestId: number,
+  note: string,
+  actor: ActionActor,
+  adminNotesOverride?: string | null,
+) {
+  const { error } = await supabase
+    .from('requests')
+    .update({
+      admin_notes: adminNotesOverride ?? note,
+      reviewed_by: actor.id ?? null,
+    })
+    .eq('id', requestId);
+
+  if (!error) {
+    const { error: logError } = await insertActivityLogWithFallback({
+      request_id: requestId,
+      action: 'note_added',
+      actor_id: actor.id ?? null,
+      actor_name: actor.name,
+      notes: note,
+    }, 'reviewed');
+
+    if (logError) {
+      return { error: logError };
+    }
   }
 
   return { error };

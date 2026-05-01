@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  addRequestNote,
   approveRequest,
   escalateRequest,
   rejectRequest,
+  requestMoreInfo,
   submitRequestViaEmail,
 } from './useSupabase';
 
@@ -101,6 +103,103 @@ describe('request actions', () => {
       expect.objectContaining({
         action: 'escalated',
         actor_name: 'Escalation Admin',
+      })
+    );
+  });
+
+  it('marks a request as info requested and records the follow-up note', async () => {
+    await requestMoreInfo(9, 'Please attach the missing invoice.', {
+      id: 'admin-3',
+      name: 'Follow-up Admin',
+    });
+
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'info_requested',
+        reviewed_by: 'admin-3',
+      })
+    );
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'info_requested',
+        notes: 'Please attach the missing invoice.',
+      })
+    );
+  });
+
+  it('adds a request note without changing the request status', async () => {
+    await addRequestNote(11, 'Verified policy exception with supervisor.', {
+      id: 'admin-4',
+      name: 'Review Admin',
+    }, 'Stored note text');
+
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        admin_notes: 'Stored note text',
+        reviewed_by: 'admin-4',
+      })
+    );
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request_id: 11,
+        action: 'note_added',
+        notes: 'Verified policy exception with supervisor.',
+      })
+    );
+  });
+
+  it('falls back to pending when info_requested status is blocked by older DB constraints', async () => {
+    updateEqMock
+      .mockResolvedValueOnce({ error: { code: '23514', message: 'violates check constraint "requests_status_check"' } })
+      .mockResolvedValueOnce({ error: null });
+
+    await requestMoreInfo(15, 'Need a clearer business justification.', {
+      id: 'admin-5',
+      name: 'Compatibility Admin',
+    });
+
+    expect(updateMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        status: 'info_requested',
+      })
+    );
+    expect(updateMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        status: 'pending',
+      })
+    );
+    expect(insertMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'info_requested',
+        request_id: 15,
+      })
+    );
+  });
+
+  it('falls back to reviewed action when note_added is blocked by older activity log constraints', async () => {
+    insertMock
+      .mockResolvedValueOnce({ error: { code: '23514', message: 'violates check constraint "activity_log_action_check"' } })
+      .mockResolvedValueOnce({ error: null });
+
+    await addRequestNote(20, 'Added extra context for audit.', {
+      id: 'admin-6',
+      name: 'Audit Admin',
+    });
+
+    expect(insertMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        action: 'note_added',
+        request_id: 20,
+      })
+    );
+    expect(insertMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        action: 'reviewed',
+        request_id: 20,
       })
     );
   });

@@ -39,6 +39,8 @@ export default function ActivityLogPage() {
     { value: 'approved', label: 'Approved' },
     { value: 'rejected', label: 'Rejected' },
     { value: 'escalated', label: 'Escalated' },
+    { value: 'info_requested', label: 'Info Requested' },
+    { value: 'note_added', label: 'Note Added' },
   ];
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export default function ActivityLogPage() {
 
   const columns = [
     { header: 'Timestamp', accessor: (log: ActivityLog) => new Date(log.created_at).toLocaleString(), className: 'whitespace-nowrap' },
-    { header: 'Action', accessor: (log: ActivityLog) => (<Badge variant={log.action === 'auto_approved' || log.action === 'approved' ? 'success' : log.action === 'rejected' || log.action === 'escalated' ? 'danger' : log.action === 'risk_scored' ? 'info' : 'neutral'}>{log.action.replace(/_/g, ' ').toUpperCase()}</Badge>) },
+    { header: 'Action', accessor: (log: ActivityLog) => (<Badge variant={log.action === 'auto_approved' || log.action === 'approved' ? 'success' : log.action === 'rejected' || log.action === 'escalated' ? 'danger' : log.action === 'risk_scored' || log.action === 'info_requested' ? 'info' : log.action === 'note_added' ? 'warning' : 'neutral'}>{log.action.replace(/_/g, ' ').toUpperCase()}</Badge>) },
     { header: 'Request ID', accessor: (log: ActivityLog) => log.request_id ? `#${log.request_id}` : '—' },
     { header: 'Actor', accessor: (log: ActivityLog) => log.actor_name || 'System' },
     { header: 'Notes', accessor: (log: ActivityLog) => log.notes || '—', className: 'max-w-xs truncate' },

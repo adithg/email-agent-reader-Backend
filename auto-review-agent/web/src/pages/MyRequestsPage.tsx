@@ -39,7 +39,7 @@ export default function MyRequestsPage() {
     { header: 'Title', accessor: 'title' },
     { header: 'Category', accessor: 'category' },
     { header: 'Submitted', accessor: (req: Request) => new Date(req.submitted_at).toLocaleDateString() },
-    { header: 'Status', accessor: (req: Request) => { const v: Record<string, any> = { pending: { label: 'Pending', variant: 'warning' }, auto_approved: { label: 'Auto-Approved', variant: 'info' }, approved: { label: 'Approved', variant: 'success' }, rejected: { label: 'Rejected', variant: 'danger' }, escalated: { label: 'Escalated', variant: 'danger' } }; const c = v[req.status] || { label: req.status, variant: 'neutral' }; return <Badge variant={c.variant}>{c.label}</Badge>; } },
+    { header: 'Status', accessor: (req: Request) => { const v: Record<string, any> = { pending: { label: 'Pending', variant: 'warning' }, info_requested: { label: 'Info Requested', variant: 'info' }, auto_approved: { label: 'Auto-Approved', variant: 'info' }, approved: { label: 'Approved', variant: 'success' }, rejected: { label: 'Rejected', variant: 'danger' }, escalated: { label: 'Escalated', variant: 'danger' } }; const c = v[req.status] || { label: req.status, variant: 'neutral' }; return <Badge variant={c.variant}>{c.label}</Badge>; } },
     { header: 'Risk Score', accessor: (req: Request) => (<span className={`font-bold ${req.risk_level === 'low' ? 'text-success' : req.risk_level === 'medium' ? 'text-warning' : 'text-danger'}`}>{req.risk_score ?? '—'}</span>) },
     { header: 'Actions', accessor: (req: Request) => (<button onClick={() => navigate(`/request/${req.id}`)} className="p-1.5 text-muted hover:text-accent-blue hover:bg-blue-50 rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>) },
   ];

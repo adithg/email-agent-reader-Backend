@@ -42,6 +42,7 @@ export default function ApprovalQueuePage() {
   const statuses = [
     { value: 'all', label: 'All Statuses' },
     { value: 'pending', label: 'Pending' },
+    { value: 'info_requested', label: 'Info Requested' },
     { value: 'escalated', label: 'Escalated' },
     { value: 'auto_approved', label: 'Auto-Approved' },
     { value: 'approved', label: 'Approved' },
@@ -109,14 +110,14 @@ export default function ApprovalQueuePage() {
     { header: 'Requester', accessor: (req: Request) => req.requester_name || req.requester_email || '—' },
     { header: 'Category', accessor: 'category' },
     { header: 'Risk', accessor: (req: Request) => (<div className="flex items-center gap-2"><span className={`text-sm font-bold ${req.risk_level === 'low' ? 'text-success' : req.risk_level === 'medium' ? 'text-warning' : 'text-danger'}`}>{req.risk_score ?? '—'}</span>{req.risk_level && <Badge variant={req.risk_level === 'low' ? 'success' : req.risk_level === 'medium' ? 'warning' : 'danger'}>{req.risk_level.toUpperCase()}</Badge>}</div>) },
-    { header: 'Status', accessor: (req: Request) => { const v: Record<string, any> = { pending: { label: 'Pending', variant: 'warning' }, auto_approved: { label: 'Auto-Approved', variant: 'info' }, approved: { label: 'Approved', variant: 'success' }, rejected: { label: 'Rejected', variant: 'danger' }, escalated: { label: 'Escalated', variant: 'danger' } }; const c = v[req.status] || { label: req.status, variant: 'neutral' }; return <Badge variant={c.variant}>{c.label}</Badge>; } },
+    { header: 'Status', accessor: (req: Request) => { const v: Record<string, any> = { pending: { label: 'Pending', variant: 'warning' }, info_requested: { label: 'Info Requested', variant: 'info' }, auto_approved: { label: 'Auto-Approved', variant: 'info' }, approved: { label: 'Approved', variant: 'success' }, rejected: { label: 'Rejected', variant: 'danger' }, escalated: { label: 'Escalated', variant: 'danger' } }; const c = v[req.status] || { label: req.status, variant: 'neutral' }; return <Badge variant={c.variant}>{c.label}</Badge>; } },
     { header: 'Submitted', accessor: (req: Request) => new Date(req.submitted_at).toLocaleDateString() },
     {
       header: 'Actions',
       accessor: (req: Request) => (
         <div className="flex items-center gap-1">
           <button onClick={(e) => { e.stopPropagation(); navigate(`/request/${req.id}`); }} className="p-1.5 text-muted hover:text-accent-blue hover:bg-blue-50 rounded-lg transition-colors" title="View"><Eye className="w-4 h-4" /></button>
-          {(req.status === 'pending' || req.status === 'escalated') && (<>
+          {(req.status === 'pending' || req.status === 'escalated' || req.status === 'info_requested') && (<>
             <button onClick={(e) => { e.stopPropagation(); handleApprove(req); }} disabled={actionLoading === req.id} className="p-1.5 text-muted hover:text-success hover:bg-green-50 rounded-lg transition-colors" title="Approve"><CheckCircle className="w-4 h-4" /></button>
             <button onClick={(e) => { e.stopPropagation(); handleReject(req); }} disabled={actionLoading === req.id} className="p-1.5 text-muted hover:text-danger hover:bg-red-50 rounded-lg transition-colors" title="Reject"><XCircle className="w-4 h-4" /></button>
             <button onClick={(e) => { e.stopPropagation(); handleEscalate(req); }} disabled={actionLoading === req.id} className="p-1.5 text-muted hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Escalate"><AlertCircle className="w-4 h-4" /></button>
